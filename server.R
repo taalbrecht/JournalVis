@@ -1430,17 +1430,32 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   
   currentwd <- getwd()
   
-    ##New way to hold multiword phrases with TopMine
+    #Create subfolder to write raw data to for ToPMine if it does not exist
+    if (file.exists(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/"))){
+    } else {
+      dir.create(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")))
+      
+    }
+    
+    #Write raw text for ToPMine phrase identification
     writeLines(gsub("\n", ". ", details$abstract), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
     
+    #Run ToPMine phrase identification
     setwd(paste0(currentwd,"/ToPMine/topicalPhrases/"))
     system(paste0(currentwd,"/ToPMine/topicalPhrases/win_run.bat"), wait = TRUE)
     
-    setwd(currentwd)
     
+    #Read ToPMine files back into R
     multiword <- ToPMinetoDTM(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
-    
     multiword <- readCorpus(multiword, type = "dtm")
+    
+    #Delete temporary directories used by ToPMine
+    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")), recursive = TRUE)
+    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset/")), recursive = TRUE)
+    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/")), recursive = TRUE)
+    
+    #Set directory back to JournalVis working directory
+    setwd(currentwd)
     
     #Identify all multi-word phrases identified by TopMine and sort by number of characters (large to small) and create dataframe with replacement token
     
@@ -1514,7 +1529,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     #doctopic <- doctopic[,order(colSums(doctopic), decreasing = TRUE)]
     
     #toLDAvis(abstractstm, docs = docs)
-    browser()
+    #browser()
     #Generate simple force directed graph of topic relationships
     #topiccorrelate <- topicCorr(abstractstm, method = "huge")
     #look at plot.topicCorr method to see how to get edges from the topicCorr output
