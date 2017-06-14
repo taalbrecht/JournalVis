@@ -1,0 +1,82 @@
+library(rCharts)
+library(LDAvis)
+library(taucharts)
+library(shinyjs)
+
+shinyUI(fluidPage(
+  useShinyjs(),
+  fluidRow(column(3,
+                         sidebarPanel(width = 12,
+                                      tags$div(title = "Perform summary search first to find number of articles, then detailed search, then linkage search. Search results for list lengths > 1000 articles are not currently supported",titlePanel(title="Inputs")),
+                                      textInput("search_text", "Search Terms (Boolean Operators Accepted)"),
+                                      radioButtons("database", "Choose Database For Search", c("pubmed", "PLOS", "aRxiv", "OPS patents", "Local Files"), selected = "pubmed"),
+                                      actionButton("local_filepath", "Select Local File Directory"),
+                                      textOutput("chosenlocalPath"),
+                                      actionButton("summary_search", "Perform Summary Search"),
+                                      textOutput("summary_search_results"),
+                                      hr(),
+                                      actionButton("detailed_search", "Get Detailed Article Information"),
+                                      textOutput("detailed_search_results"),
+                                      hr(),
+                                      actionButton("link_search", "Perform Linkage Search"),
+                                      actionButton("include_citedby", "Include Articles Citing This Collection"),
+                                      actionButton("include_referencedby", "Include Articles Referenced by This Collection"),
+                                      textOutput("link_search_results"),
+                                      radioButtons("usemultiword", "Find Multiword Tokens? (Experimental)", c("Yes", "No"), selected = "No"),
+                                      radioButtons("usesentenceanalysis", "Run Sentence Analysis? (Experimental - Takes a Long Time)", c("Yes", "No"), selected = "No"),
+                                      hr(),
+                                      tags$div(title = "Save article list as csv file",
+                                               textInput("ArticleSaveName","File Name For Article List:",value="ArticleSaveName")),
+                                      tags$div(title = "Save article list as csv file",
+                                               downloadButton("ArticleSave","Save Article List"))
+                         )
+        ),
+        column(9,navbarPage("Graphical Analysis",
+                            tabPanel("Article Network",
+                                     tags$div(title = "Network diagram of articles. References are conected by lines, nodes are sized by number of times cited",h4("Network")),
+                                    h6(column(6,sliderInput("nodexspacing", label = "Horizontal Node Spacing", min = 0.1, max = 3, value = 1)),
+                                     column(6,sliderInput("nodeyspacing", label = "Vertical Node Spacing", min = 0.1, max = 3, value = 1))),
+                                    hr(),
+                                    hr(),
+                                    hr(),
+                                    hr(),
+                                    rcytoscapejsOutput("plot",height="600px"),
+                                    hr(),
+                                    tags$div(title = "Click on keyword or article type name to highlight it in the network graph. Click on the 'Filter Results' button to filter the search results to only include the highlighted articles",h4("Keyword and Article Type Filters")),
+                                    column(6, actionButton("cleargroups", "Clear Group Selections")),
+                                    column(6, actionButton("filtergroups", "Include Only Selected Groups",  style='background:green; color:white'),
+                                           actionButton("excludegroups", "Exclude All Selected Groups",  style='background:red; color:white'),
+                                           actionButton("clear_filters", "Clear All Applied Filters")),
+                                    hr(),
+                                     column(6,
+                                            showOutput("articletypebar", "highcharts")),
+                                            column(6,
+                                            showOutput("keywordbar", "highcharts")
+                                            )),
+                            tabPanel("Topic Map",
+                                    tags$div(title = "Topic map of all articles in network map. Each topic is associated with a word list. Clicking on a topic circle will show the trend of the topic over time below this graph and will also cause the network graph at the top to apply transparency to the article nodes based on article relevance. Multiple topics can be selected at once.", h4("Topic Map of Article Abstracts")),
+                                    actionButton("cleartopics", "Clear Topic Selections"),
+                                    h4(),
+                                    textInput("topic_search", "Search for Topics Containing Specified Words. Uses Regex matching logic: https://en.wikipedia.org/wiki/Regular_expression"),
+                                    htmlOutput("TopicFind"),
+                                    h4(),
+                                    visOutput("TopicPCA"),
+                                    h4(),
+                                    tags$div(title = "Trend of the selected topics over time. The network graph at the top will apply transparency to the article nodes based on article relevance. Multiple topics can be selected at once.", h4("Selected Topic Trend Over Time")),
+                                    #tauchartsOutput("TopicTime"),
+                                    plotOutput("TopicTime"),
+                                    hr(),
+                                    tags$div(title = "Most relevant sentences are selected by multiplying all selected topic probabilities with the entropy of each sentence (based on word count approximation).", h4("Top 5 Most Relevant Sentences for Selected Topics")),
+                                    textOutput("RelevantSentences"),
+                                     #h4("Article Details"),
+                                     #verbatimTextOutput("clickedNode"),
+                                     #h4("Referenced By"),
+                                     #verbatimTextOutput("connectedNodes"),
+                                    ##TODO## Finish this data table below once javascript passing clicked nodes is done
+#                                      h4("Clicked Node Data"),
+#                                      dataTableOutput("nodeDataTable"),
+                                     hr()
+                            )
+        ))
+        ))
+)
