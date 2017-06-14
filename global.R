@@ -6,6 +6,7 @@ library(DT)
 library(XML)
 library(httr)
 library(antiword)
+library(qdap)
 
 #Home brewed functions
 
