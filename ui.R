@@ -1,6 +1,6 @@
 library(rCharts)
 library(LDAvis)
-library(taucharts)
+#library(taucharts)
 library(shinyjs)
 
 shinyUI(fluidPage(
