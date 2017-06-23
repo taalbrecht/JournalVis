@@ -1,11 +1,7 @@
-# MultiEqOptimizer
+# JournalVis
 =======
 
-MultiEqOptimizer is a package that contains functions used to create single experimental designs jointly optimized for multiple candidate models as described in:
-
-http://dx.doi.org/10.1080/00401706.2012.746207
-
-Contains functions for linear regression and discrete choice logistic models.
+JournalVis is an article topic modeling software used to identify the latent topic structure in a collection of text documents.
 
 ## Installation
 
@@ -50,10 +46,18 @@ install.packages("rplos")
 
 #Github packages:
 
+These libraries must be installed using the devtools package:
+
+```
+install.packages("devtools")
+
+```
+
+
 Network visualization tools:
 
 ```R
-devtools::install_github("taalbrecht/rcytoscapejs")
+devtools::install_github("taalbrecht/r-cytoscape.js")
 devtools::install_github("taalbrecht/LDAvis")
 devtools::install_github("ramnathv/rCharts")
 ```
