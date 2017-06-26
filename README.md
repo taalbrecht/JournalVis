@@ -5,7 +5,16 @@ JournalVis is an article topic modeling software used to identify the latent top
 
 ## Installation
 
-There are a large number of dependencies for this application. Since so many are github installs, I have listed them here by source instead of installing them the first time the application runs:
+This application runs on R. It is recommended that the latest version of R (64 bit) be used:
+https://cran.r-project.org/
+
+It is also recommended that an IDE be used to browse the code. A popular IDE that was used to develop this application is RStudio:
+https://www.rstudio.com/products/rstudio-desktop/
+
+The rest of this guide assumes that there is a working copy of R and RStudio installed.
+
+
+There are a large number of dependencies for this application. Since so many are github installs, I have listed them here by source instead of automatically installing them the first time the application runs. You must execute the following lines of code in the R console or this application will not run:
 
 #CRAN packages:
 
