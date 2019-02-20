@@ -7,8 +7,13 @@ library(XML)
 library(httr)
 library(antiword)
 library(qdap)
+library(qdapTools)
+library(quanteda)
 
-#Home brewed functions
+#Enable bookmarking via url
+#enableBookmarking(store = "server")
+
+#Custom functions
 
 CiteListPubmed <- function(elinkxml){
   #Function to return data frame of citations for articles in entrez link xml document.
@@ -110,7 +115,8 @@ GetPubmedCitationLinks <- function(articleidlist){
   CitationFrame <- unique.array(CitationFrame)
   
   #Count number of citations found per article
-  TimesCited <- summary.factor(CitationFrame[,1])
+  #TimesCited <- summary.factor(CitationFrame[,1]) - replaced with code below to eliminate issues with arbitrary cutoff
+  TimesCited <- summary.factor(CitationFrame[,1], maxsum = length(unique(CitationFrame[,1])))
   
   #Create matrix of citations that are outside of this article list:
   OutsideCitationFrame <- CitationFrame
@@ -561,7 +567,8 @@ OPSAbsBib <- function(idlist, country = "US", combineduplicates = TRUE){
   CitationFrame <- CitationFrame[complete.cases(CitationFrame),]
   
   #Count number of citations found per article
-  TimesCited <- summary.factor(CitationFrame[,1])
+  #TimesCited <- summary.factor(CitationFrame[,1]) - modified to eliminate arbitrary upper limit to number of results returned
+  TimesCited <- summary.factor(CitationFrame[,1], maxsum = length(unique(CitationFrame[,1])))
 
   output <- list("ID" = outlist$ids,
                  "PatentID" = outlist$docids,
@@ -815,7 +822,11 @@ ArticleTopicPolar <- function(stmmod, articlelist, usestem = FALSE) {
   sentencecorpus <- as.data.frame(sentencecorpus)
   
   multdef <- UniqueSub(stmmod$vocab[grep(" ", stmmod$vocab, fixed = TRUE)], sentencecorpus$text)
-  sentencecorpus <- qdap::as.dtm(multdef$keyeddocs, sentencecorpus$docs)
+  
+  #Asshole changed names of output variables for no reason breaking this code
+  #sentencecorpus <- qdap::as.dtm(multdef$keyeddocs, sentencecorpus$docs)
+  sentencecorpus <- qdap::as.dtm(multdef$keyeddocs, sentencecorpus$doc_id)
+  
   colnames(sentencecorpus) <- mgsub(as.character(multdef$keyframe$Key), as.character(multdef$keyframe$OrigString), colnames(sentencecorpus), ignore.case = TRUE)
   
   #Original phrase replacer using broken sub_holder function from qdap (randomly loses information)
@@ -1006,16 +1017,25 @@ ArticleTopicPolar <- function(stmmod, articlelist, usestem = FALSE) {
     #Fill in entropy for word count = 1
     entframe$entropy[which(entframe$wordcount == 1)] <- log(10,2)
     
+    #Set default entropy to 0
+    sentdocframe$entropy <- 0
+    
     #Populate entropy using formula: log2(10) + sum(n = 1 to N) of 0.1*log(n)/n
     for(i in 2:max(entframe$wordcount)){
       
       entframe$entropy[which(entframe$wordcount == i)] <- entframe$entropy[which(entframe$wordcount == (i-1))] + 0.1*log(i,2)/i
       
+      #Enter entropy value into all word counts in sentdocframe
+      sentdocframe$entropy[sentdocframe$wc == i] <- entframe$entropy[which(entframe$wordcount == (i-1))] + 0.1*log(i,2)/i
+      
     }
     
-    #Merge entropy frame with sentdocframe
-    sentdocframe <- merge(sentdocframe, entframe, by.x = c("wc"), by.y = c("wordcount"), all.x = TRUE, all.y = FALSE)
+    #Merge entropy frame with sentdocframe. Old code, integrated into loop above since merge is a broken function
+    #Merge function is a complete piece of shit that constantly causes problems, deletes data, and randomly ruins data frames so don't use it anymore
+    #sentdocframe <- merge(sentdocframe, entframe, by.x = c("wc"), by.y = c("wordcount"), all.x = TRUE, all.y = FALSE)
   
+    
+    
   output <- list("DocumentTopicPolarity" = doctopicpolar, "SentenceTopicPolarity" = sentdocframe)
   return(output)
   
@@ -1128,11 +1148,11 @@ pdftotext <- function(sourcefolder, destfolder, includesubdirs = FALSE, UseOCR =
   #destfolder <- "C:/PDFtoText/TestOut"
   
   # make a vector of PDF file paths
-  myfiles <- list.files(path = sourcefolder, pattern = "pdf",  full.names = TRUE, recursive = includesubdirs)
+  myfiles <- list.files(path = sourcefolder, pattern = "pdf|PDF",  full.names = TRUE, recursive = includesubdirs)
   
   #Create destination file names
-  filebase <- list.files(path = sourcefolder, pattern = "pdf",  full.names = FALSE, recursive = includesubdirs)
-  filebase <- gsub(".pdf", "", filebase)
+  filebase <- list.files(path = sourcefolder, pattern = "pdf|PDF",  full.names = FALSE, recursive = includesubdirs)
+  filebase <- gsub(".pdf|.PDF", "", filebase)
   
   #Trim Subdirectories out of names
   filebase <- sapply(filebase, FUN = function(x) unlist(strsplit(x, split = "/", fixed = TRUE))[[length(unlist(strsplit(x, split = "/", fixed = TRUE)))]])
@@ -1274,17 +1294,27 @@ loadlocalfilelist <- function(filelist, includeperc = c(0,0.25)){
 #   #Filter out non .txt files
 #   myfiles <- filelist[grep(".txt", filelist)]
   
-  #Create file names
-  filenames <- sapply(filelist, FUN = function(x) strsplit(x, ".", fixed = TRUE)[[1]][1])
-  
   #Trim Subdirectories out of names
-  filenames <- sapply(filenames, FUN = function(x) unlist(strsplit(x, split = "/", fixed = TRUE))[[length(unlist(strsplit(x, split = "/", fixed = TRUE)))]])
+  filenames <- sapply(filelist, FUN = function(x) unlist(strsplit(x, split = "/", fixed = TRUE))[[length(unlist(strsplit(x, split = "/", fixed = TRUE)))]])
+  
+  #Older versions below that don't work quite as well
+  ##Get article extension type
+  #fileextension <- lapply(filenames, FUN = function(x) tolower(max(strsplit(x, ".", fixed = TRUE)[[1]])))
+  #
+  ##Create file names
+  #filenames <- sapply(filenames, FUN = function(x) strsplit(x, ".", fixed = TRUE)[[1]][1])
+  
+  #Newer version using tools package (standard R library)
+  #Get article extension type
+  fileextension = tools::file_ext(filelist)
+  #Create file names
+  filenames = tools::file_path_sans_ext(filenames)
   
   #Loop through all documents to extract text supported by extracttext function
   articlecontents <- sapply(filelist, extracttext)
   
-  #Get article extension type
-  fileextension <- lapply(filelist, FUN = function(x) tolower(max(strsplit(x, ".", fixed = TRUE)[[1]])))
+  # #Get article extension type
+  # fileextension <- lapply(filelist, FUN = function(x) tolower(max(strsplit(x, ".", fixed = TRUE)[[1]])))
   
   #Get creation date
   createdate <- file.info(filelist)
@@ -1302,6 +1332,74 @@ loadlocalfilelist <- function(filelist, includeperc = c(0,0.25)){
                  "CreateDate" = createdate,
                  "ModifyDate" = modifydate)
   
+  return(output)
+  
+}
+
+#Function to get linkage structure of local files based on filenames showing up in other documents
+documentnamelinkage <- function(docids, doctext, searchids = docids){
+  #Function establishes citation structure by finding instances of searchids in doctext. Each instance of searchids found in doctext counts as the doctext article citing the docids document
+  #INPUTS:
+  ##docids - list or vector of unique document IDs to use as document names when returning citation structure
+  ##doctext - list of document text corresponding to docids
+  ##searchids - Optional list or vector of unique search terms to use to establish linkage structure. Defaults to be the same as docids but can be a different list or vector of the same length as docids
+  
+  #Create quanteda corpus and tokenize (without removing numbers or converting to lowercase, etc.) for faster searching
+  quantcorp = corpus(x = doctext, docnames = docids)
+  #NOTE: When tokenizing, consider modifying code below to use searchids as dictionary to allow for phrase matching
+  quanttok = tokens(x = quantcorp)
+  
+  #Find all matches
+  matchframe = kwic(quanttok, pattern = searchids)
+  #Cut down to unique document matches
+  matchframe = matchframe[,c("keyword", "docname")]
+  matchframe = unique.array(matchframe)
+  
+  #Extract source article and cited by vectors
+  SourceArticle = matchframe$keyword
+  CitedBy = matchframe$docname
+  
+  #Trace search term back to source document ID (works but is a little slow)
+  SourceDocID = CitedBy
+  for(i in 1:length(docids)){
+    
+    SourceDocID[SourceArticle == searchids[i]] = docids[i]
+    
+  }
+  
+  # #This method is faster but is imperfect and leaves some NA values that break later functions but is fast
+  # names(docids) = searchids
+  # #This creates some NAs somehow
+  # SourceDocID = docids[SourceArticle]
+  
+  # #Old, very slow, and inaccurate code
+  #   
+  # #Initialize source article and cited by vectors
+  # SourceArticle <- c()
+  # CitedBy <- c()
+  # 
+  # #Loop through each element of searchids and find matching documents in doctext
+  # for(i in c(1:length(searchids))){
+  #   
+  #   #Find all documents that reference the current element of searchids (fixed and useBytes options turned on for speed)
+  #   tempvect <- grep(searchids[i], doctext, fixed = TRUE, useBytes = TRUE)
+  #   
+  #   #Collect citing and source aritcle IDS in citation and source lists
+  #   CitedBy <- c(CitedBy, docids[tempvect])
+  #   SourceArticle <- c(SourceArticle, rep(docids[i], times = length(tempvect)))
+  #   
+  # }
+  
+  #Create a citation frame
+  CitationFrame <- data.frame(SourceDocID, CitedBy, stringsAsFactors = FALSE)
+  #Eliminate duplicate citations
+  CitationFrame <- unique.array(CitationFrame)
+  
+  #Count the number of times each article is cited
+  TimesCited <- summary.factor(CitationFrame[,1], maxsum = length(unique(CitationFrame[,1])))
+  
+  #Return output as a list
+  output <- list("CitationFrame" = CitationFrame, "TimesCited" = TimesCited)
   return(output)
   
 }
@@ -1340,9 +1438,9 @@ searchdirtxt <- function(sourcefolder, searchstring, includesubdirs = FALSE, sea
   
 }
 
-#Function to find string location in a txt filepath
 stringlocationintxt <- function(txtpath, searchstring, percentfilt = c(0,1)){
-
+  #Function to find string location in a txt filepath
+  
   output <- data.frame()
   
   #Read file
@@ -1371,15 +1469,16 @@ stringlocationintxt <- function(txtpath, searchstring, percentfilt = c(0,1)){
   return(output)
 }
 
-
-extracttext <- function(filepath){
+extracttext <- function(filepath, verbose = FALSE){
   #Function to extract text from local files of various formats. Formats currently supported are:
-  ##.txt, .doc
+  ##.txt, .doc, .docx
   ##If format is supported, returns a character vector of text. Otherwise, returns empty vector
   
   #Initialize output vector
   output <- c()
+  if(verbose){
   print(paste("Local Extraction Processing", Sys.time()))
+  }
   #Get file extension (last element of split vector):
   fileextension <- tolower(max(strsplit(filepath, ".", fixed = TRUE)[[1]]))
   
@@ -1393,7 +1492,67 @@ extracttext <- function(filepath){
     output <- antiword::antiword(filepath)
   }
   
+  #Read characters from .docx files (requires antiword package)
+  if(fileextension == "docx"){
+    output <- paste(qdapTools::read_docx(filepath), collapse = " ")
+  }
+  
   return(output)
+  
+}
+
+texttonamedlist <- function(sourcetext, delimitvect = c("\nQuestion [0-9]*", "BSC Response [0-9]*[A-Za-z]*")){
+  #Function to split single character vector into relational data frame (for splitting one large text document into sub-elements that can each be treated as an article)
+  #INPUTS:
+  ##sourcetext - single string of characters
+  ##delimitvect - vector of splitting regex text. These splits will be recursively applied (source string split by first element, then the resulting split elements split by second element, and so on)
+  #### note, alternative example with "OR" matching of same text is: delimitvect = c("\nQuestion [0-9]*|BSC Response [0-9]*[A-Za-z]*")
+  
+  linkframe <- data.frame(source = c(), target = c())
+  outlist <- list()
+  
+  #looptext <- sourcetext
+  
+  for(i in 1:length(delimitvect)){
+    
+    #Break string by ith element of delimitvect and place into list 
+    outlist[[i]] <- lapply(sourcetext, function(x, y = delimitvect[i]){
+      output <- strsplit(x = x, split = y)[[1]]
+      names(output) <- c("Leadstring", unlist(regmatches(x = x, m = gregexpr(text = x, pattern = y))))
+      return(output)
+      })
+    # outlist[[i]] <- sapply(sourcetext, function(x, y = delimitvect[i]){
+    #   output <- strsplit(x = x, split = y)[[1]]
+    #   names(output) <- c("Leadstring", unlist(regmatches(x = x, m = gregexpr(text = x, pattern = y))))
+    #   return(output)
+    # })
+    
+    #Replace sourcetext with resultant text vector
+    sourcetext <- unlist(outlist[[i]])
+    
+  }
+  
+  return(outlist)
+  ##Code to convert to data frame if only one level is used:
+  #outframe <- data.frame(outlist)
+  #colnames(outframe) <- c("text")
+  #outframe$splitnames <- names(unlist(outlist))
+  
+}
+
+#Function to return all multi-word tokens produced by ToPMine
+ToPMineExtractMultiword = function(filepath){
+  
+  #Read file and split all comma separated entries
+  mwtoks <- read.table(filepath, header=FALSE, stringsAsFactors=FALSE, sep = "\n")
+  mwtoks <- lapply(mwtoks[,1], strsplit, split = ",", fixed = TRUE)
+  
+  #Unlist and remove all duplicates
+  mwtoks = unique(unlist(mwtoks))
+  
+  #Only keep characters with spaces (thus multiword tokens)
+  mwtoks = grep(pattern = " ", mwtoks, fixed = TRUE, value = TRUE)
+  return(mwtoks)
   
 }
 
