@@ -2,6 +2,7 @@ library(rCharts)
 library(LDAvis)
 library(shinyjs)
 library(DT)
+library(collapsibleTree)
 
 shinyUI(fluidPage(
   useShinyjs(),
@@ -17,15 +18,24 @@ shinyUI(fluidPage(
                                                 tags$div(title = "Perform summary search first to find number of articles, then detailed search, then linkage search. Search results for list lengths > 1000 articles are not currently supported",titlePanel(title="Inputs")),
                                textInput("search_text", "Search Terms (Boolean Operators Accepted)"),
                                radioButtons("database", "Choose Database For Search", c("Load Model", "pubmed", "PLOS", "aRxiv", "OPS patents", "Local Files", "CSV File"), selected = "Load Model"),
-                               actionButton("local_filepath", "Select Local File Directory"),
-                               textOutput("chosenlocalPath"),
-                               radioButtons("locallinkby", "Choose File Property to Use For Reference Linking", c("None", "Filename"), selected = "None"),
+                               conditionalPanel(condition="input.database=='Local Files'",
+                                                actionButton("local_filepath", "Select Local File Directory"),
+                                                textOutput("chosenlocalPath"),
+                                                radioButtons("locallinkby", "Choose File Property to Use For Reference Linking", c("None", "Filename"), selected = "None")),
+                               conditionalPanel(condition="input.database=='CSV File'",
+                                                fileInput("csv_input", label = "Select CSV File", accept = c(
+                                                  "text/csv",
+                                                  "text/comma-separated-values,text/plain",
+                                                  ".csv"))),
+                               #actionButton("local_filepath", "Select Local File Directory"),
+                               #textOutput("chosenlocalPath"),
+                               #radioButtons("locallinkby", "Choose File Property to Use For Reference Linking", c("None", "Filename"), selected = "None"),
                                actionButton("summary_search", "Perform Summary Search"),
                                hr(),
-                               fileInput("csv_input", label = "Select CSV File", accept = c(
-                                 "text/csv",
-                                 "text/comma-separated-values,text/plain",
-                                 ".csv")),
+                               # fileInput("csv_input", label = "Select CSV File", accept = c(
+                               #   "text/csv",
+                               #   "text/comma-separated-values,text/plain",
+                               #   ".csv")),
                                textOutput("summary_search_results"),
                                hr(),
                                actionButton("detailed_search", "Get Detailed Article Information"),
@@ -36,6 +46,7 @@ shinyUI(fluidPage(
                                actionButton("include_referencedby", "Include Articles Referenced by This Collection"),
                                textOutput("link_search_results"),
                                hr(),
+                               h4("Augment Data From Additional CSV File"),
                                fileInput("augment_input", label = "Select CSV File", accept = c(
                                  "text/csv",
                                  "text/comma-separated-values,text/plain",
@@ -75,7 +86,7 @@ shinyUI(fluidPage(
                                h6(column(3,sliderInput("nodexspacing", label = "Horizontal Node Spacing", min = 0.1, max = 3, value = 1)),
                                   column(3,sliderInput("nodeyspacing", label = "Vertical Node Spacing", min = 0.1, max = 3, value = 1)),
                                   column(3,uiOutput("ui_graphlayout")),
-                                  column(3,radioButtons("gennetgraph", "Generate Article Graph", c("Yes", "No"), selected = "Yes"))),
+                                  column(3,radioButtons("gennetgraph", "Generate Article Graph", c("Yes", "No"), selected = "No"))),
                                hr(),
                                hr(),
                                hr(),
@@ -112,10 +123,23 @@ shinyUI(fluidPage(
                                textInput(inputId = "topic_search", label = "Search for Topics Containing Specified Words. Uses Regex matching logic: https://en.wikipedia.org/wiki/Regular_expression", placeholder = "Keyword search"),
                                htmlOutput("TopicFind"),
                                h4(),
+                               ###########################Old code with both elements on same page for when java conflict is fixed in topicPCA
+                               #tags$div(title = "Hierarchy of topics. Click on nodes to combine or separate topics. Changes will propagate through other topic graphs.", h4("Topic Hierarchy")),
+                               #collapsibleTreeOutput(outputId = "TopicTree"),
+                               hr(),
                                visOutput("TopicPCA"),
                                h4(),
-                               tags$div(title = "Trend of the selected topics over time. The network graph at the top will apply transparency to the article nodes based on article relevance. Multiple topics can be selected at once.", h4("Selected Topic Trend Over Time")),
+                               # # ########################## Temporary code to display topicPCA and hierarchy in separate tabs - DOESN'T FIX CONFLICT
+                               # navbarPage("Graphical Analysis",
+                               #            tabPanel("Topic Hierarchy",
+                               #                     tags$div(title = "Hierarchy of topics. Click on nodes to combine or separate topics. Changes will propagate through other topic graphs.", h4("Topic Hierarchy")),
+                               #                     collapsibleTreeOutput(outputId = "TopicTree")),
+                               #            tabPanel("Topic and Word Chart",
+                               #                     visOutput("TopicPCA"))
+                               #            ),
+                               # ############################### End temporary code
                                #tauchartsOutput("TopicTime"),
+                               tags$div(title = "Trend of the selected topics over time. The network graph at the top will apply transparency to the article nodes based on article relevance. Multiple topics can be selected at once.", h4("Selected Topic Trend Over Time")),
                                plotOutput("TopicTime"),
                                hr(),
                                tags$div(title = "Most relevant sentences are selected by multiplying all selected topic probabilities with the entropy of each sentence (based on word count approximation).", h4("Most Relevant Sentences for Selected Topics")),

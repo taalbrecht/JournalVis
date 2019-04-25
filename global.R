@@ -1094,6 +1094,164 @@ wordProbPtest <- function(docs, stmmod, topicgroup1, topicgroup2 = NULL){
   
 }
 
+#Function to create topic hierarchy from k topic by n matrix of log word probabilities
+topichierarchy<- function(logbeta, theta, vocab, vocabcount = NULL, nwords = NULL, nlab = 4, difftype = "sibling"){
+  ##Inputs:
+  ### logbeta: matrix with one row per topic and one column per word where entries are log of probabilities of each word in the topic. Probabilities sum to 1 across each row but not across each column.
+  ### theta: matrix with one column per topic and one row per document where entries are probabilities of each topic in a document. Probabilities sum to 1 across each row but not across each column.
+  ### vocab: vector of word names for each column of logprobs
+  ### vocabcount: Optional: vector of number of times each word in vocab occurs in entire document collection
+  ### nwords: Optional: vector of number of words in each topic (not required to be integer). Same length as number of rows in lobprobs.
+  ### nlab: number of top scoring words to use in label
+  ### difftype: type of difference to use for FREX word calculation. sibling calculates most different yet frequent words between all siblings. parent diff calculates most frequent yet exclusive difference from parent node word probs. global calculates the most frequent yet exclusive difference from all other documents not in this topic.
+
+  #Generate labels for each leaf topic.
+  topicfrex <- calcfrex(logbeta, 0.5, vocabcount)
+  labvect = apply(topicfrex, MARGIN = 2, function(x) paste(vocab[x[1:nlab]], collapse = ", "))
+  
+  #Calculate cosine distance matrix using word probabilities
+  wordprobs = as.matrix(exp(logbeta))
+  cosdist <- proxy::dist(wordprobs, method = "cosine")
+  
+  #Cluster based on cosine distance using average linkage
+  #NOTE: Uses average number of documents in topic as weighting argument (members) for clustering
+  ndocs = colSums(theta)
+  #Note here, complete linkage seems to make most sense (grab topic based on maximum angle between all members of candidate cluster) since averaging angles isn't necessarily sensible. Average linkage still provides ok results sometimes though. Single linkage is bad.
+  cosclust <- hclust(cosdist, method = "complete", members = ndocs)
+  
+  #Build parent-node-attribute... matrix for hierarchy
+  dendframe = data.frame(matrix(nrow = nrow(cosclust$merge) + nrow(logbeta), ncol = 6, data = NA))
+  colnames(dendframe) = c("Parent", "Node", "Name", "FrexSplit", "Children", "height")
+  rownames(dendframe) = c(1:(nrow(logbeta)+nrow(cosclust$merge)))
+  dendframe$Node = rownames(dendframe)
+  dendframe$ParentFrex = ""
+  dendframe$SiblingFrex = ""
+  dendframe$GlobalFrex = ""
+  
+  #Populate info for leaf topics
+  dendframe$Name[c(1:nrow(logbeta))] = paste("Topic:", c(1:nrow(logbeta)))
+  dendframe$FrexSplit[c(1:nrow(logbeta))] = labvect
+  dendframe$ParentFrex[c(1:nrow(logbeta))] = labvect
+  dendframe$SiblingFrex[c(1:nrow(logbeta))] = labvect
+  dendframe$GlobalFrex[c(1:nrow(logbeta))] = labvect
+  dendframe$Children[c(1:nrow(logbeta))] = sapply(c(1:nrow(logbeta)), list)
+  
+  #Modify merge matrix from hclust to be additional node numbers based on starting point of topics + 1
+  mergemat = abs(cosclust$merge) + nrow(logbeta)*as.numeric(cosclust$merge > 0)
+  rownames(mergemat) = c((nrow(logbeta) + 1):nrow(dendframe))
+  
+  #Loop through all merge points to define merged node properties:
+  for(i in 1:nrow(mergemat)){
+    
+    #Establish child-parent linkage
+    dendframe$Parent[mergemat[i,]] = rownames(mergemat)[i]
+    
+    #Enter child nodes into dataframe
+    dendframe$Children[as.numeric(rownames(mergemat)[i])] = list(unique(unlist(dendframe$Children[mergemat[i,]])))
+    
+    #Create split point word choices
+    dendframe$ParentFrex[mergemat[i,]] = frexhierarchysplit(wordprobs = wordprobs, vocab = vocab, memberlist = dendframe$Children[mergemat[i,]],
+                                                           vocabcount = vocabcount, ndocs = ndocs, nlab = 4, difftype = "parent")
+    #Create split point word choices
+    dendframe$SiblingFrex[mergemat[i,]] = frexhierarchysplit(wordprobs = wordprobs, vocab = vocab, memberlist = dendframe$Children[mergemat[i,]],
+                                                           vocabcount = vocabcount, ndocs = ndocs, nlab = 4, difftype = "sibling")
+    #Create split point word choices
+    dendframe$GlobalFrex[mergemat[i,]] = frexhierarchysplit(wordprobs = wordprobs, vocab = vocab, memberlist = dendframe$Children[mergemat[i,]],
+                                                           vocabcount = vocabcount, ndocs = ndocs, nlab = 4, difftype = "global")
+    
+    
+  }
+  
+  #Calculate node size based on document count
+  dendframe$NodeSize = sapply(dendframe$Children, function(x) sum(ndocs[x]))
+  
+  ##Create network reference
+  #collapsibleTreeNetwork(dendframe[,c(1,2,4,7)], attribute = "FrexSplit", nodeSize = "NodeSize")
+  #cosclust <- hclust(cosdist, method = "average")
+  #cosdend <- as.dendrogram(cosclust, label = labvect)
+  return(dendframe)
+  
+}
+
+#Function to calculate frequent and exclusive words at each split of a topic hierarchy:
+frexhierarchysplit<- function(wordprobs, vocab, memberlist, vocabcount = NULL, ndocs = rep(1, nrow(wordprobs)), nlab = 4, difftype = "sibling"){
+  ##Inputs:
+  ### wordprobs: matrix with one row per topic and one column per word where entries are probabilities of each word in the topic. Probabilities sum to 1 across each row but not across each column.
+  ### memberlist: list of vectors of topic IDs in each group to use for frex split calculation e.g. list(c(1,2), c(3,5))
+  ### vocab: vector of word names for each column of logprobs
+  ### vocabcount: Optional: vector of number of times each word in vocab occurs in entire document collection
+  ### nwords: Optional: vector of number of words in each topic (not required to be integer). Same length as number of rows in lobprobs.
+  ### nlab: number of top scoring words to use in label
+  ### difftype: type of difference to use for FREX word calculation. sibling calculates most different yet frequent words between all siblings. parent diff calculates most frequent yet exclusive difference from parent node word probs. global calculates the most frequent yet exclusive difference from all other documents not in this topic.
+  
+  #Calculate relative proportion of total words in each member group
+  #memberlist[[length(memberlist)+1]] = unique(unlist(memberlist))
+  
+  #Generate frex labels for the split
+  if(difftype == "sibling"){
+    
+    #Calculate likelihood of each topic in each member group weighted by member size
+    groupwordprobs = t(sapply(memberlist, function(x) (ndocs[x]/sum(ndocs[x]))%*%wordprobs[x,]))
+    
+    #Logbeta (set floor to -1000 to allow for frex calculation)
+    grouplogbet = log(groupwordprobs)
+    grouplogbet[grouplogbet < -1000] = -1000
+    
+    #Extract label words
+    topicfrex <- calcfrex(grouplogbet, 0.5, vocabcount)
+    labvect = apply(topicfrex, MARGIN = 2, function(x) paste(vocab[x[1:nlab]], collapse = ", "))
+  }
+  
+  if(difftype == "parent"){
+    
+    #Add parent of nodes to memberlist
+    memberlist[[length(memberlist)+1]] = unique(unlist(memberlist))
+    
+    #Calculate likelihood of each topic in each member group weighted by member size
+    groupwordprobs = t(sapply(memberlist, function(x) (ndocs[x]/sum(ndocs[x]))%*%wordprobs[x,]))
+    
+    #Logbeta (set floor to -1000 to allow for frex calculation)
+    grouplogbet = log(groupwordprobs)
+    grouplogbet[grouplogbet < -1000] = -1000
+    
+    #Extract label words
+    labvect = rep(NA, length(memberlist) - 1)
+    for(i in 1:(nrow(grouplogbet)-1)){
+      
+      topicfrex <- calcfrex(grouplogbet[c(i,nrow(grouplogbet)),], 0.5, vocabcount)
+      labvect[i] = paste(vocab[topicfrex[1:nlab,1]], collapse = ", ")
+    }
+    
+  }
+  
+  if(difftype == "global"){
+    
+    labvect = rep(NA, length(memberlist))
+    for(i in 1:length(memberlist)){
+      
+      #Create memberlist for all topics in node and all out of node
+      memberlistloop = list(memberlist[[i]], -memberlist[[i]])
+      #Add parent of nodes to memberlist
+      #memberlist[[length(memberlist)+1]] = unique(unlist(memberlist))
+      
+      #Calculate likelihood of each topic in each member group weighted by member size
+      groupwordprobs = t(sapply(memberlistloop, function(x) (ndocs[x]/sum(ndocs[x]))%*%wordprobs[x,]))
+      
+      #Logbeta (set floor to -1000 to allow for frex calculation)
+      grouplogbet = log(groupwordprobs)
+      grouplogbet[grouplogbet < -1000] = -1000
+      
+      topicfrex <- calcfrex(grouplogbet, 0.5, vocabcount)
+      labvect[i] = paste(vocab[topicfrex[1:nlab,1]], collapse = ", ")
+    }
+    
+  }
+  
+  return(labvect)
+  
+}
+
+
 #Function to find topics with keywords in the top "n" most frequent keywords (more primitive than above) (should be included with stm but is not loading for some reason)
 findTopic <- function(x, list, n=20, type=c("prob", "frex", "lift","score"), verbose=TRUE) {
   type <- match.arg(type)

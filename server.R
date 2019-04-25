@@ -11,6 +11,7 @@ library(DT)
 library(XML)
 library(htmlwidgets)
 library(shinyjs)
+library(collapsibleTree)
 #library(taucharts)
 
 ##############################
@@ -282,7 +283,7 @@ shinyServer(function(input, output, session) {
   output$ui_graphlayout <- renderUI({
     
     #Import default model values and get length of formulalist
-    choicevals <- c("cose", "preset")
+    choicevals <- c("cose", "drl", "preset")
     
     
     selectInput(inputId = "graphlayout", label = "Select layout for graph",
@@ -1313,7 +1314,7 @@ shinyServer(function(input, output, session) {
     if(length(reactaugment$newdat) > 0){
       
       for(i in 1:length(reactaugment$newdat)){
-        
+        # THIS MAY BE AN ISSUE USING NAME MATCHING SINCE NEWLY ADDED VARIABLES MIGHT NOT WORK WELL
         Fetch[[reactaugment$newdat[[i]]$AugmentDatName]] = reactaugment$newdat[[i]]$AugmentNewDat[Fetch[[reactaugment$newdat[[i]]$DBKey]]]
         
       }
@@ -1430,31 +1431,71 @@ shinyServer(function(input, output, session) {
     nodeData$x <- 1
     nodeData$y <- 1
     
-    #If there are connections, create a sugiyama network of connected nodes and fill orphans in around it
-    if(is.null(FilterDetail()[["year"]]) == FALSE){
-    
+    #Get node data
     NodeEdge <- DBSwitch()[["NodeEdge"]]
-    
     edgeList <- NodeEdge[["CitationFrame"]]
-    
     startnodes <- FilterDetail()[["PMID"]]
     
     if(ncol(edgeList) == 2){
-    
-    #Filter edgeList by node IDs
-    edgeList <- edgeList[intersect(which(edgeList[,1] %in% startnodes), which(edgeList[,2] %in% startnodes)),]
-    
-    colnames(edgeList) <- c("source", "target")
-    
+      
+      #Filter edgeList by node IDs
+      edgeList <- edgeList[intersect(which(edgeList[,1] %in% startnodes), which(edgeList[,2] %in% startnodes)),]
+      colnames(edgeList) <- c("source", "target")
+      
     }
-    
-    layer <- FilterDetail()[["year"]]
     
     nodes <- startnodes
     
     id <- nodes
     name <- nodes
     nodeData <- data.frame(id, name, stringsAsFactors=FALSE)
+    nodeData$x <- 1
+    nodeData$y <- 1
+    
+    #drl layout (x and y just set based on minimizing crossings)
+    if(input$graphlayout == "drl"){
+      #Build network and remove redundant connections (self and duplicate connections)
+      net <- graph.data.frame(edgeList, nodeData, directed = TRUE)
+      net = simplify(net)
+      
+      #Apply drl method to generate layout and extract x and y positions
+      sublayout <-  layout.fruchterman.reingold(net)
+      #sublayout <- layout.drl(net)
+      
+      #Translate sublayout results for x into nodeData network
+      nodeData$x <- sublayout[,1]
+      nodeData$y <- sublayout[,2]
+      
+      layout <- "preset"
+      
+    }
+    
+    #If there are connections, create a sugiyama network of connected nodes and fill orphans in around it
+    if(input$graphlayout == "preset"){
+    if(is.null(FilterDetail()[["year"]]) == FALSE){
+    
+    # NodeEdge <- DBSwitch()[["NodeEdge"]]
+    # 
+    # edgeList <- NodeEdge[["CitationFrame"]]
+    # 
+    # startnodes <- FilterDetail()[["PMID"]]
+    # 
+    # if(ncol(edgeList) == 2){
+    # 
+    # #Filter edgeList by node IDs
+    # edgeList <- edgeList[intersect(which(edgeList[,1] %in% startnodes), which(edgeList[,2] %in% startnodes)),]
+    # 
+    # colnames(edgeList) <- c("source", "target")
+    # 
+    # }
+    
+    layer <- FilterDetail()[["year"]]
+    
+    #nodes <- startnodes
+    
+    #id <- nodes
+    #name <- nodes
+    #nodeData <- data.frame(id, name, stringsAsFactors=FALSE)
     nodeData$x <- as.integer(NA)
     
     #Translate year into layer number and store as y variable
@@ -1524,7 +1565,8 @@ shinyServer(function(input, output, session) {
 #Change to preset layout if this section of code was executed
 layout <- "preset"
 
-}
+    }
+    }
 
 return(structure(list("layout" = layout, "nodeData" = nodeData)))
 
@@ -2157,7 +2199,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     #Get data for linegraph and format for Rcharts plotting
     topicmodel <- CreateTopicModel()[["TopicModel"]]
     meta <- CreateTopicModel()[["Metadata"]]
-    semsearch <- SemanticSearch()
     
     #Create formula with selected topics
     formulatext <- paste(paste0("c(1:", paste(ncol(topicmodel$theta)), ")"), "~ s(year)")
@@ -2451,26 +2492,39 @@ output$ModelSave<-downloadHandler(
   output$plot <- renderRcytoscapejs({
     
     if(input$gennetgraph == "Yes"){
-    
-    #Get node data
-    nodeData <- CreateNetwork()[["nodeData"]]
-    edgeData <- CreateNetwork()[["edgeData"]]
-
-    #Get layout to use
+      
+      #Get node data
+      nodeData <- CreateNetwork()[["nodeData"]]
+      edgeData <- CreateNetwork()[["edgeData"]]
+      
+      #Get layout to use
       layout <- NetworkLayout()[["layout"]]
       
       ####In Work#####
-      layout <- input$graphlayout
-    
-    #Set node names to blank so they will not be printed on node
-    nodeData$name <- ""
-    
-    #Get node positions for hierarchy layout
-     nodeData$x <- (NetworkLayout()[["nodeData"]][["x"]]*25 - min(NetworkLayout()[["nodeData"]][["x"]]*100))*input$nodexspacing
-     nodeData$y <- (NetworkLayout()[["nodeData"]][["y"]]*50 - min(NetworkLayout()[["nodeData"]][["y"]]*100))*input$nodeyspacing
-    
-    cyNetwork <- createCytoscapeJsNetwork(nodeData, edgeData)
-    rcytoscapejs(nodeEntries=cyNetwork$nodes, edgeEntries=cyNetwork$edges, showPanzoom = TRUE, layout = layout)
+      #layout <- input$graphlayout
+      
+      #Set node names to blank so they will not be printed on node
+      nodeData$name <- ""
+      
+      
+      if(input$graphlayout == "drl"){
+        nodeData$x <- (NetworkLayout()[["nodeData"]][["x"]])*input$nodexspacing
+        nodeData$y <- (NetworkLayout()[["nodeData"]][["y"]])*input$nodeyspacing
+        temp = proxy::dist(nodeData[,c("x", "y")])
+        scalefactx = 0.75*max(nodeData$width)/min(temp)
+        scalefacty = 0.75*max(nodeData$height)/min(temp)
+        nodeData$x = nodeData$x*scalefactx*input$nodexspacing
+        nodeData$y = nodeData$y*scalefacty*input$nodexspacing
+      }
+      
+      #Adjust scale of node positions for hierarchy layout
+      if(input$graphlayout == "preset"){
+        nodeData$x <- (NetworkLayout()[["nodeData"]][["x"]]*25 - min(NetworkLayout()[["nodeData"]][["x"]]*100))*input$nodexspacing
+        nodeData$y <- (NetworkLayout()[["nodeData"]][["y"]]*50 - min(NetworkLayout()[["nodeData"]][["y"]]*100))*input$nodeyspacing
+      }
+      
+      cyNetwork <- createCytoscapeJsNetwork(nodeData, edgeData)
+      rcytoscapejs(nodeEntries=cyNetwork$nodes, edgeEntries=cyNetwork$edges, showPanzoom = TRUE, layout = layout)
     }
     else{NULL}
     
@@ -2898,17 +2952,76 @@ output$TopicHierarchy <- renderPlot({
   #meta <- CreateTopicModel()[["Metadata"]]
   #topicprob <- CreateTopicModel()[["TopicProb"]]
   
+  #Generate labels for leaf (choose FREX metric for now):
+  topiclabs = labelTopics(topicmodel, n = 4)
+  labvect = apply(topiclabs$frex, MARGIN = 1, function(x) paste(x, collapse = ", "))
+  
   #Calculate cosine distance matrix using word probabilities?
-  cosdist <- proxy::dist(as.matrix(exp(topicmodel$beta$logbeta[[1]])), method = "cosine")
+  wordprobs = as.matrix(exp(topicmodel$beta$logbeta[[1]]))
+  rownames(wordprobs) = labvect
+  cosdist <- proxy::dist(wordprobs, method = "cosine")
+  #cosdist = as.matrix(cosdist)
   
   #Cluster based on cosine distance using average linkage
-  #NOTE: CONSIDER ADDING WEIGHTING PER TOPIC SIZE HERE USING members ARGUMENT FOR HCLUST
-  cosclust <- hclust(cosdist, method = "average")
-  cosdend <- as.dendrogram(cosclust)
+  #NOTE: Uses average number of documents in topic as weighting argument (members) for clustering
+  cosclust <- hclust(cosdist, method = "average", members = colSums(topicmodel$theta))
+  #cosclust <- hclust(cosdist, method = "average")
+  cosdend <- as.dendrogram(cosclust, label = labvect)
   plotly::plot_dendro(cosdend)
   cosclust <- pvclust::pvclust(as.matrix(cosdist), method.hclust = "average")
   
   return(graphdat)
+})
+
+#Plot topic hierarchy
+output$TopicTree <- renderCollapsibleTree({
+  
+  #
+  #Get data for linegraph and format for Rcharts plotting
+  topicmodel <- CreateTopicModel()[["TopicModel"]]
+  #meta <- CreateTopicModel()[["Metadata"]]
+  #topicprob <- CreateTopicModel()[["TopicProb"]]
+  
+  #Generate hierarchy TODO: Try adding nwords argument to see if it improves
+  hierframe = topichierarchy(logbeta = topicmodel$beta$logbeta[[1]], theta = topicmodel$theta,
+                             vocab = topicmodel$vocab, vocabcount = topicmodel$settings$dim$wcounts$x,
+                             nwords = NULL, nlab = 4, difftype = "global")
+  
+  # #Generate labels for leaf (choose FREX metric for now):
+  # topiclabs = labelTopics(topicmodel, n = 4)
+  # labvect = apply(topiclabs$frex, MARGIN = 1, function(x) paste(x, collapse = ", "))
+  # 
+  # #Calculate cosine distance matrix using word probabilities?
+  # wordprobs = as.matrix(exp(topicmodel$beta$logbeta[[1]]))
+  # rownames(wordprobs) = labvect
+  # cosdist <- proxy::dist(wordprobs, method = "cosine")
+  # #cosdist = as.matrix(cosdist)
+  # 
+  # #Cluster based on cosine distance using average linkage
+  # #NOTE: Uses average number of documents in topic as weighting argument (members) for clustering
+  # cosclust <- hclust(cosdist, method = "average", members = colSums(topicmodel$theta))
+  # #cosclust <- hclust(cosdist, method = "average")
+  # cosdend <- as.dendrogram(cosclust, label = labvect)
+  # cosdend = data.tree::as.Node(cosdend)
+  
+  #Create graph tooltip html:
+  hierframe$tooltip = paste0(
+    "Topic Content: ",
+    hierframe$GlobalFrex,
+    "<br><br>Split Difference: ",
+    hierframe$SiblingFrex,
+    "<br><br>Parent Difference: ",
+    hierframe$ParentFrex
+  )
+  
+  #Create hierarchy
+  #graphout = collapsibleTreeNetwork(hierframe[,c("Parent", "Node", "FrexSplit", "NodeSize")],
+  #                                 attribute = "FrexSplit", nodeSize = "NodeSize", collapsed = FALSE)
+  graphout = collapsibleTreeNetwork(hierframe[,c("Parent", "Node", "tooltip", "NodeSize")],
+                                    tooltipHtml = "tooltip", nodeSize = "NodeSize", collapsed = FALSE)
+  return(graphout)
+  #plotly::plot_dendro(cosdend)
+  #cosclust <- pvclust::pvclust(as.matrix(cosdist), method.hclust = "average")
 })
 
 #Plot Topics in PCA reduced graph using LDAvis
