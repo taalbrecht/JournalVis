@@ -2223,7 +2223,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     
   })
   
-  #Find documents that match document text provided in search
+  #Full text search to find documents that match document text provided in full text search
   SemanticSearch <- reactive({
     
     #Get topic model
@@ -2389,7 +2389,76 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     return(list("SemanticTopics" = topicvec, "DocumentMatchRank" = closedocs, "DocumentCosDistance" = distperc))
     
   })
+
+  #Keyword/phrase search to find documents that match keyword(s)/keyphrase(s) provided in keyword search
+  KeywordSearch <- reactive({
+    
+    topicmodel <- CreateTopicModel()[["TopicModel"]]
+    
+    topicprobs <- list()
+    
+    if(nchar(input$keyword_search) > 0){
+      
+      #Split by comma-space pattern
+      searchvect <- strsplit(input$keyword_search, split = ", ", fixed = TRUE)
+      
+      #Find matching topic blend using regex matching for each query term
+      topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
+      
+      if(is.null(topicprobs$TopicMatchProbability) == FALSE){
+        
+        topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
+        
+      }
+      
+    }
+    
+
+    
+    return(list("QueryText" = input$keyword_search,
+                "TopicMatchProbability" = topicprobs$TopicMatchProbability,
+                "MissingWords" = topicprobs$MissingWords))
+    
+  })
   
+  
+  #Reactive value to collect keyphrase searches for plotting
+  keyphraseplot <- reactiveValues()
+  
+  #Observer to collect keyphrase plot data
+  observe ({  
+    
+    if(input$plot_keyphrase > 0){
+      
+      isolate({
+        
+        topicprobs = KeywordSearch()
+        
+        #Check to make sure file input, id column selector, and new column name are not blank
+        if(!is.null(topicprobs$TopicMatchProbability)){
+          
+          keyphraseplot$plotdat[[length(keyphraseplot$plotdat) + 1]] = topicprobs
+          
+        }
+        
+      })
+      
+    }
+  })
+  
+  #Observer to clear keyphrase plot data
+  observe ({  
+    
+    if(input$clear_plot_keyphrase > 0){
+      
+      isolate({
+        
+        keyphraseplot$plotdat = list()
+        
+      })
+    }
+  })
+    
   # NOTE: Reactive variables used as functions networkReactive()
 #   networkReactive <- reactive({
 #     if(is.null(input$connectedNodes)) {
@@ -2657,53 +2726,61 @@ output$keywordbar <- renderChart({
 
 #Find topics that represent keywords in search
 output$TopicFind <- renderUI({
-  topicmodel <- CreateTopicModel()[["TopicModel"]]
   
-  topicprobs <- list()
+  # #Code moved to reactive statement so results can be shared across several outputs
+  # topicmodel <- CreateTopicModel()[["TopicModel"]]
+  # 
+  # topicprobs <- list()
+  # 
+  # if(nchar(input$keyword_search) > 0){
+  # 
+  # searchvect <- strsplit(input$keyword_search, split = " ", fixed = TRUE)
+  # 
+  # topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
+  # 
+  # if(is.null(topicprobs$TopicMatchProbability) == FALSE){
+  # 
+  # topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
+  # 
+  # }
+  # 
+  # }
   
-  if(nchar(input$topic_search) > 0){
-  
-  searchvect <- strsplit(input$topic_search, split = " ", fixed = TRUE)
-  
-  topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
-  
-  if(is.null(topicprobs$TopicMatchProbability) == FALSE){
-  
-  topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
-  
-  }
-  
-  }
-  
+  #Get topic probabilities from keyword search
+  topicprobs = KeywordSearch()
 
   
   return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
                paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]), ": ", 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))],4), "%", collapse = "<br>"),
-               "<br/> Words Not Found In Any Topics: ", paste(topicprobs$MissingWords, collapse = " "))))
+               "<br/> Words/Phrases Not Found In Any Topics: ", paste(topicprobs$MissingWords, collapse = " "))))
   
 })
 
 
 #Find topics that represent keywords in search
 output$TopicFindProb <- renderChart({
-  topicmodel <- CreateTopicModel()[["TopicModel"]]
   
-  topicprobs <- list()
+  # #Code moved to reactive statement so results can be shared across several outputs
+  # topicmodel <- CreateTopicModel()[["TopicModel"]]
+  # 
+  # topicprobs <- list()
+  # 
+  # if(nchar(input$keyword_search) > 0){
+  #   
+  #   searchvect <- strsplit(input$keyword_search, split = " ", fixed = TRUE)
+  #   
+  #   topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
+  #   
+  #   if(is.null(topicprobs$TopicMatchProbability) == FALSE){
+  #     
+  #     topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
+  #     
+  #   }
+  #   
+  # }
   
-  if(nchar(input$topic_search) > 0){
-    
-    searchvect <- strsplit(input$topic_search, split = " ", fixed = TRUE)
-    
-    topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
-    
-    if(is.null(topicprobs$TopicMatchProbability) == FALSE){
-      
-      topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
-      
-    }
-    
-  }
-  
+  #Get topic probabilities from keyword search
+  topicprobs = KeywordSearch()
 
   
   #Convert into series list for java plotting with rCharts
@@ -2858,6 +2935,41 @@ output$SemanticSearchTimePlot <- renderPlot({
   return(graphdat)
 })
   
+
+#Create plot of keyword/phrase topic projection trend over time search
+output$KeywordTimePlot <- renderPlot({
+  
+  #Get base topic graph of all topics
+  graphdat = TopicGraphsCore()[["TopicGraph"]]
+  
+  #Extract mean probabilities from graph
+  allprobsmat = data.frame(graphdat$means)
+  
+  #Get list of keyphrases to plot
+  plotlist = keyphraseplot$plotdat
+  
+  #Create list to hold resulting probabilities
+  ylist = list()
+  namevec = c()
+  
+  #Loop through every keyphrase
+  for(i in 1:length(plotlist)){
+    
+    #Project mean topic probabilities over time onto topic blend from keyphrase search
+    ylist[[i]] = as.matrix(allprobsmat)%*%plotlist[[i]]$TopicMatchProbability
+    namevec = c(namevec, plotlist[[i]]$QueryText)
+    
+  }
+  
+  #Create graph
+  graphdat = matplot(graphdat$x, y = data.frame(ylist), type = "l",
+                     xlab = "Time", ylab = "Proportion of All Documents",
+                     main = "KeyPhrase Query Topic Probability Over Time")
+  legend("topleft", legend = namevec, col = 1:length(plotlist), lty = 1:length(plotlist))
+  
+  
+  return(graphdat)
+})
 
 #Plot selected topics over time
 output$TopicTime <- renderPlot({

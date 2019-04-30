@@ -121,8 +121,11 @@ shinyUI(fluidPage(
                                tags$div(title = "Topic map of all articles in network map. Each topic is associated with a word list. Clicking on a topic circle will show the trend of the topic over time below this graph and will also cause the network graph at the top to apply transparency to the article nodes based on article relevance. Multiple topics can be selected at once.", h4("Topic Map of Article Abstracts")),
                                actionButton("cleartopics", "Clear Topic Selections"),
                                h4(),
-                               textInput(inputId = "topic_search", label = "Search for Topics Containing Specified Words. Uses Regex matching logic: https://en.wikipedia.org/wiki/Regular_expression", placeholder = "Keyword search"),
+                               textInput(inputId = "keyword_search", label = "Search for Topics Containing Specified Words or Phrases. To Search Using Multiple Phrases, Separate Phrases by Commas. Uses Regex matching logic: https://en.wikipedia.org/wiki/Regular_expression", placeholder = "Keyword search"),
                                htmlOutput("TopicFind"),
+                               column(6,actionButton("plot_keyphrase", label = "Plot Search Phrase"),
+                                      actionButton("clear_plot_keyphrase", label = "Clear Phrase Plot")),
+                               plotOutput("KeywordTimePlot"),
                                h4(),
                                ###########################Old code with both elements on same page for when java conflict is fixed in topicPCA
                                #tags$div(title = "Hierarchy of topics. Click on nodes to combine or separate topics. Changes will propagate through other topic graphs.", h4("Topic Hierarchy")),
