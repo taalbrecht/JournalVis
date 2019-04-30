@@ -70,6 +70,7 @@ shinyUI(fluidPage(
                                hr(),
                                numericInput(inputId = "stmtermminpercent", label = "Words Must Be In Min % of Documents", value = 1, min = 0, max = 100),
                                numericInput(inputId = "stmtermmaxpercent", label = "Words Cannot Be In More Than Max % of Documents", value = 99, min = 0, max = 100),
+                               actionButton("gentopicmodelbutton", label = "Create Topic Model"),
                                actionButton("debug_button", "Enter R Code Browser"),
                                hr()
                                )

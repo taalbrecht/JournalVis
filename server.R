@@ -1823,9 +1823,13 @@ if(length(details$keywords) == nrow(nodeData)){
     library(tm)
     library(quanteda)
     
-    #If there is no loaded model, create a new topic model
-    if(is.null(LoadModel()[["TopicModelLoad"]]) | (input$database != "Load Model")){
+    #If the generate model button is pressed, create a new topic model
+    if(input$gentopicmodelbutton > 0){
+    #if(is.null(LoadModel()[["TopicModelLoad"]]) | (input$database != "Load Model")){
     
+      #Isolate internal code to prevent updates where the button has not been pressed
+      isolate({
+      
     #Process abstract text to stm text object. Includes control objects, including number removal, punctuation removal, lowercase, and stemming
     #metadata should have unique document ID that is used in other charts as first column
     meta <- data.frame(details$PMID, details$year)
@@ -2171,10 +2175,16 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     enable("detailed_search")
     enable("link_search")
     
+    })
+    
     }
     
-    #If a model has been loaded, use that instead
-    if((!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
+    #If a model has been loaded, use the loaded model unless the generate model button has been pressed
+    if((input$gentopicmodelbutton == 0) & (!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
+    #if((!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
+      
+      #Isolate internal code to prevent updates where the button has not been pressed
+      isolate({
       
       #Get loaded data
       loaddat = LoadModel()
@@ -2185,7 +2195,8 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       meta = loaddat$TopicModelLoad$Metadata
       doctopic = loaddat$TopicModelLoad$TopicProb
       polartopics = loaddat$TopicModelLoad$SentenceTopics
-      
+    
+      })
     }
     
     return(structure(list("TopicModel" = abstractstm, "TopicPCAJSON" = topicPCAJSON, "Metadata" = meta, "TopicProb" = doctopic, "SentenceTopics" = polartopics)))
