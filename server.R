@@ -2995,7 +2995,7 @@ output$TopicTime <- renderPlot({
   meta <- CreateTopicModel()[["Metadata"]]
   
   #Select cut graphdat down to selected topics
-  graphdat <- plot.estimateEffect(graphdat, covariate = "year", topics = unlist(topicclicks$selected), model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.50, npoints = max(meta$year) - min(meta$year) + 1)
+  graphdat <- plot.estimateEffect(graphdat, covariate = "year", topics = unlist(topicclicks$selected), model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.95, npoints = max(meta$year) - min(meta$year) + 1)
   
   return(graphdat)
 })
