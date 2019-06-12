@@ -41,6 +41,8 @@ install.packages("huge")
 install.packages("qdap")
 install.packages("stm")
 install.packages("tm")
+install.packages("pdftools")
+install.packages("readtext")
 
 #Web and API Communication and Manipulation:
 
@@ -69,6 +71,12 @@ Network visualization tools:
 devtools::install_github("taalbrecht/r-cytoscape.js")
 devtools::install_github("taalbrecht/LDAvis")
 devtools::install_github("ramnathv/rCharts")
+```
+
+Data ingestion tools:
+
+```R
+devtools::install_github("taalbrecht/msgxtractr")
 ```
 
 ## Documentation
