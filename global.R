@@ -1634,10 +1634,12 @@ stringlocationintxt <- function(txtpath, searchstring, percentfilt = c(0,1)){
   return(output)
 }
 
-extracttext <- function(filepath, verbose = FALSE){
+extracttext <- function(filepath, verbose = FALSE, pdfattachments = TRUE){
   #Function to extract text from local files of various formats. Formats currently supported are:
   ##.txt, .doc, .docx, .pdf, .msg
   ##If format is supported, returns a character vector of text. Otherwise, returns empty vector
+  #filepath: path to file to extract text
+  #pdfattachments: whether text should be extracted from any pdf file attachments (eg. pdf portfolios)
   
   #Initialize output vector
   output <- c()
@@ -1671,6 +1673,14 @@ extracttext <- function(filepath, verbose = FALSE){
   #Read formats covered by readtext package (requires readtext package)
   if(fileextension %in% c("json", "csv", "tab", "tsv", "html", "xml", "pdf", "odt", "doc", "docx", "rtf")){
     output <- paste(readtext::readtext(filepath)$text, collapse = " ")
+  }
+  
+  #If pdf files should be examined for attachments, add text from attachment to output string
+  if(fileextension == "pdf" & pdfattachments){
+    attachments = pdftools::pdf_attachments(filepath)
+    for(x in attachments){
+      output <- paste(c(output, pdftools::pdf_text(x$data)), collapse = " ")
+    }
   }
   
   #Read characters from .msg files (requires msgxtractr package)
