@@ -12,6 +12,7 @@ library(XML)
 library(htmlwidgets)
 library(shinyjs)
 library(collapsibleTree)
+library(RColorBrewer)
 #library(taucharts)
 
 ##############################
@@ -2972,7 +2973,7 @@ output$KeywordTimePlot <- renderPlot({
 })
 
 #Plot selected topics over time
-output$TopicTime <- renderPlot({
+output$TopicTime <- renderPlotly({
   
   # #Old code that generates full graph in this function
   # #Get data for linegraph and format for Rcharts plotting
@@ -2996,8 +2997,32 @@ output$TopicTime <- renderPlot({
   
   #Select cut graphdat down to selected topics
   graphdat <- plot.estimateEffect(graphdat, covariate = "year", topics = unlist(topicclicks$selected), model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.95, npoints = max(meta$year) - min(meta$year) + 1)
+  #Create a color palette to choose colors for each plot
+  colorPalette <- brewer.pal(n = 10, "Paired")
+
+  #Extract data from the value returned by plot.estimateEffect to display on the chart
+  PlotLine = graphdat[3]
+  plotConfidenceInterval = graphdat[4]
+  plotTopics = graphdat[5]
   
-  return(graphdat)
+  #Create plotly object
+  graphdatplotly <- plot_ly()
+  x <- c(2018:2020)
+  
+  #Convert the plot line and confidence intervals to a data frame to be used in the plotly and add_trace functions
+  dfPlotLine <- data.frame(matrix(unlist(PlotLine$means), nrow=length(PlotLine$means), byrow=T))
+  dfConfidenceInterval <- data.frame(matrix(unlist(plotConfidenceInterval$ci), nrow=length(plotConfidenceInterval$ci), byrow=T))
+  
+  #Loops for plotting the cofidence interval and topic line
+  for(i in 1:nrow(dfConfidenceInterval)){
+    chosenColor <- sample(colorPalette,1)
+    graphdatplotly <- add_trace(graphdatplotly, y = dfPlotLine[i,1], x = as.data.frame(0), type = 'scatter', name = plotTopics$labels[i], marker = list(color = chosenColor))
+    for(j in 1:max(nrow(dfConfidenceInterval), ncol(dfConfidenceInterval))){
+      graphdatplotly <- add_trace(graphdatplotly, y = dfConfidenceInterval[i,j], x = as.data.frame(0), showlegend = FALSE, type = "scatter", marker = list(color = chosenColor,dash = 'dash' ))
+    }
+  }
+  
+  return(graphdatplotly)
 })
 
 # #Function below has been replaced by a datatable object

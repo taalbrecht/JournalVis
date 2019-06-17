@@ -3,6 +3,7 @@ library(LDAvis)
 library(shinyjs)
 library(DT)
 library(collapsibleTree)
+library(plotly)
 
 shinyUI(fluidPage(
   useShinyjs(),
@@ -119,7 +120,7 @@ shinyUI(fluidPage(
                                #tauchartsOutput("TopicTime"),
                                tags$div(title = "Trend of the selected topics over time. The network graph at the top will apply transparency to the article nodes based on article relevance. Multiple topics can be selected at once.",
                                         h4("Selected Topic Trend Over Time"), tags$span(style="color:blue", "?")),
-                               plotOutput("TopicTime"),
+                               plotlyOutput("TopicTime"),
                                hr(),
                                tags$div(title = "Most relevant sentences are selected by multiplying all selected topic probabilities with the entropy of each sentence (based on word count approximation).",
                                         h4("Most Relevant Sentences for Selected Topics"), tags$span(style="color:blue", "?")),
