@@ -310,12 +310,13 @@ shinyServer(function(input, output, session) {
   LoadModel <- reactive({
     
     #File loader for pre-loaded user modes
+    
+    #If there is no file, return required blank structure
     if(input$usermode == "Pre-Loaded"){
-      #If there is no file, return blank lists
-      if (is.null(input$preloadmodsel)){
+      
+      if (is.null(input$preloadmodsel) || input$preloadmodsel == ""){
         
         return(list())
-
       }
       
       #Load the model file and return
