@@ -12,6 +12,7 @@ library(XML)
 library(htmlwidgets)
 library(shinyjs)
 library(collapsibleTree)
+library(RColorBrewer)
 #library(taucharts)
 
 ##############################
@@ -2981,22 +2982,7 @@ output$KeywordTimePlot <- renderPlot({
 })
 
 #Plot selected topics over time
-output$TopicTime <- renderPlot({
-  
-  # #Old code that generates full graph in this function
-  # #Get data for linegraph and format for Rcharts plotting
-  # topicmodel <- CreateTopicModel()[["TopicModel"]]
-  # meta <- CreateTopicModel()[["Metadata"]]
-  # topicprob <- CreateTopicModel()[["TopicProb"]]
-  # 
-  # #Create formula with selected topics
-  # formulatext <- paste(paste("c(", paste(unlist(topicclicks$selected), collapse = ","), ")"), "~ s(year)")
-  # topicformula <- as.formula(formulatext)
-  # 
-  # #Graph selected topics over time
-  # graphdat <- estimateEffect(topicformula, topicmodel, metadata = meta)
-  # 
-  # graphdat <- plot.estimateEffect(graphdat, covariate = "year", model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.50)
+output$TopicTime <- renderPlotly({
   
   #Get base effect estimates over time for all topics and topic model
   graphdat = TopicGraphsCore()[["TopicEstimatedEffects"]]
@@ -3005,8 +2991,32 @@ output$TopicTime <- renderPlot({
   
   #Select cut graphdat down to selected topics
   graphdat <- plot.estimateEffect(graphdat, covariate = "year", topics = unlist(topicclicks$selected), model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.95, npoints = max(meta$year) - min(meta$year) + 1)
+  #Create a color palette to choose colors for each plot
+  colorPalette = rainbow(length(unlist(topicclicks$selected)))
+
+  #Extract data from the value returned by plot.estimateEffect to display on the chart
+  PlotLine = graphdat$means
+  plotConfidenceInterval = graphdat$ci
+  plotTopics = graphdat$labels
+  xvals <- graphdat$x
   
-  return(graphdat)
+  #Create plotly object
+  graphdatplotly <- plot_ly(type = 'scatter', mode = "lines")
+  
+  #Loops for plotting the cofidence interval and topic line
+  for(i in 1:length(plotTopics)){
+    chosenColor <- colorPalette[i]
+    
+    # Add mean line
+    graphdatplotly = add_trace(graphdatplotly, y = PlotLine[[i]], x = xvals, name = plotTopics[i], legendgroup = paste0("Line", i), line = list(color = chosenColor))
+    
+    # Add upper and lower CI
+    graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][1,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
+    graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][2,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
+
+  }
+  
+  return(graphdatplotly)
 })
 
 # #Function below has been replaced by a datatable object
