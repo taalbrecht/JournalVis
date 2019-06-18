@@ -718,7 +718,8 @@ shinyServer(function(input, output, session) {
       query <- query[which(length(query) > 0)]
       query <- unlist(query)
       
-      searchsummary <- lapply(query, searchdirtxt, sourcefolder = localfilePath(), includesubdirs = FALSE, searchperc = c(0,1))
+      #searchsummary <- lapply(query, searchdirtxt, sourcefolder = localfilePath(), includesubdirs = FALSE, searchperc = c(0,1))
+      searchsummary <- lapply(query, searchdirtxt, sourcefolder = localfilePath(), includesubdirs = (input$localrecursive == "Yes"), searchperc = c(0,1))
       
       #Start with list of all possible elements
       if(length(searchsummary) > 0){
@@ -735,7 +736,7 @@ shinyServer(function(input, output, session) {
       }
       
       ##Temporary code to take all files in path for now. Replace with functioning search later
-      filepathresults <- list.files(localfilePath(), full.names = TRUE)
+      filepathresults <- list.files(localfilePath(), full.names = TRUE, recursive = (input$localrecursive == "Yes"))
       #####
       
       count <- length(filepathresults)
@@ -2875,6 +2876,13 @@ output$TopicSemMatch <- renderUI({
     
     #Create data frame of title and abstract ranked by match
     tmp = data.frame(Match = 1, Title = details$title, FullText = abstracts)
+    
+    #Add hyperlink to document title if it exists
+    if(!is.null(details$hyperlink)){
+      tmp$Title = paste0('<a href="',details$hyperlink,'"', "target='_blank'>",details$title,"</a>")
+    }
+    
+    #Rank items
     rownames(tmp) = details$PMID
     tmp = tmp[as.character(closedocs),]
     tmp$Match = round(100*(1 - distperc), digits = 1)
@@ -2882,7 +2890,8 @@ output$TopicSemMatch <- renderUI({
     #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
     rownames(tmp) = NULL
     
-    DT::datatable(tmp, filter='bottom', style='bootstrap', options=list(pageLength=5, columnDefs = list(list(
+    DT::datatable(tmp, filter='bottom', style='bootstrap', escape = FALSE,
+                  options=list(pageLength=5, columnDefs = list(list(
       targets = 3,
       render = JS(
         "function(data, type, row, meta) {",
@@ -3056,14 +3065,22 @@ output$RelevantSentencesDT <- DT::renderDataTable({
   
   #Match source document titles to each sentence
   sourcedoc = meta$PMID[sentencetopics$num]
-  sourcedoc = details$title[sourcedoc]
+  #sourcedoc = details$title[sourcedoc]
+  
+  #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
+  if(!is.null(details$hyperlink)){
+    sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
+  }else{
+    sourcedoc = details$title[sourcedoc]
+  }
   
   #Create data frame of sentences ranked by the product of entropy and topic balance
   tmp = data.frame("Source Document" = sourcedoc,
                    Rank = round(ranksentences, 4),
                    Probability = round(sentenceprob, 4),
-                   Entropy = round(sentenceent, 4),
+                   "Information Entropy" = round(sentenceent, 4),
                    "Sentence Text" = sentencetopics$text.var)
+  
   #Order data frame by rank
   tmp = tmp[order(ranksentences, decreasing = TRUE),]
   #rownames(tmp) = details$PMID
@@ -3072,7 +3089,7 @@ output$RelevantSentencesDT <- DT::renderDataTable({
   
   #browser()
   
-  DT::datatable(tmp, rownames = FALSE, filter='bottom', style='bootstrap', options=list(pageLength=5))
+  DT::datatable(tmp, rownames = FALSE, filter='bottom', style='bootstrap', escape = FALSE, options=list(pageLength=5))
   
 })
 
