@@ -21,6 +21,7 @@ shinyUI(fluidPage(
                                conditionalPanel(condition="input.database=='Local Files'",
                                                 actionButton("local_filepath", "Select Local File Directory"),
                                                 textOutput("chosenlocalPath"),
+                                                radioButtons("localrecursive", "Include Files in Subdirectories?", c("No", "Yes"), selected = "No"),
                                                 radioButtons("locallinkby", "Choose File Property to Use For Reference Linking", c("None", "Filename"), selected = "None")),
                                conditionalPanel(condition="input.database=='CSV File'",
                                                 fileInput("csv_input", label = "Select CSV File", accept = c(

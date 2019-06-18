@@ -717,7 +717,8 @@ shinyServer(function(input, output, session) {
       query <- query[which(length(query) > 0)]
       query <- unlist(query)
       
-      searchsummary <- lapply(query, searchdirtxt, sourcefolder = localfilePath(), includesubdirs = FALSE, searchperc = c(0,1))
+      #searchsummary <- lapply(query, searchdirtxt, sourcefolder = localfilePath(), includesubdirs = FALSE, searchperc = c(0,1))
+      searchsummary <- lapply(query, searchdirtxt, sourcefolder = localfilePath(), includesubdirs = (input$localrecursive == "Yes"), searchperc = c(0,1))
       
       #Start with list of all possible elements
       if(length(searchsummary) > 0){
@@ -734,7 +735,7 @@ shinyServer(function(input, output, session) {
       }
       
       ##Temporary code to take all files in path for now. Replace with functioning search later
-      filepathresults <- list.files(localfilePath(), full.names = TRUE)
+      filepathresults <- list.files(localfilePath(), full.names = TRUE, recursive = (input$localrecursive == "Yes"))
       #####
       
       count <- length(filepathresults)

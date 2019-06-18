@@ -9,6 +9,9 @@ library(antiword)
 library(qdap)
 library(qdapTools)
 library(quanteda)
+library(pdftools)
+library(readtext)
+library(msgxtractr)
 
 #Enable bookmarking via url
 #enableBookmarking(store = "server")
@@ -1469,7 +1472,11 @@ loadlocalfilelist <- function(filelist, includeperc = c(0,0.25)){
   filenames = tools::file_path_sans_ext(filenames)
   
   #Loop through all documents to extract text supported by extracttext function
-  articlecontents <- sapply(filelist, extracttext)
+  #articlecontents <- sapply(filelist, extracttext)
+  articlecontents = sapply(filelist, function(x) tryCatch(extracttext(x),
+                                                          error = function(e){print(paste("Unreadable file that should be readable:", x))
+                                                            print(e)
+                                                            return(NA)}))
   
   # #Get article extension type
   # fileextension <- lapply(filelist, FUN = function(x) tolower(max(strsplit(x, ".", fixed = TRUE)[[1]])))
@@ -1627,13 +1634,16 @@ stringlocationintxt <- function(txtpath, searchstring, percentfilt = c(0,1)){
   return(output)
 }
 
-extracttext <- function(filepath, verbose = FALSE){
+extracttext <- function(filepath, verbose = FALSE, pdfattachments = TRUE){
   #Function to extract text from local files of various formats. Formats currently supported are:
-  ##.txt, .doc, .docx
+  ##.txt, .doc, .docx, .pdf, .msg
   ##If format is supported, returns a character vector of text. Otherwise, returns empty vector
+  #filepath: path to file to extract text
+  #pdfattachments: whether text should be extracted from any pdf file attachments (eg. pdf portfolios)
   
   #Initialize output vector
   output <- c()
+  
   if(verbose){
   print(paste("Local Extraction Processing", Sys.time()))
   }
@@ -1645,14 +1655,38 @@ extracttext <- function(filepath, verbose = FALSE){
     output <- readChar(filepath, file.info(filepath)$size)
   }
   
-  #Read characters from .doc files (requires antiword package)
-  if(fileextension == "doc"){
-    output <- antiword::antiword(filepath)
+  # #Read characters from .doc files (requires antiword package)
+  # if(fileextension == "doc"){
+  #   output <- antiword::antiword(filepath)
+  # }
+  # 
+  # #Read characters from .docx files (requires antiword package)
+  # if(fileextension == "docx"){
+  #   output <- paste(qdapTools::read_docx(filepath), collapse = " ")
+  # }
+  # 
+  # #Read characters from .pdf files (requires pdftools package)
+  # if(fileextension == "pdf"){
+  #   output <- paste(pdftools::pdf_text(filepath), collapse = " ")
+  # }
+  
+  #Read formats covered by readtext package (requires readtext package)
+  if(fileextension %in% c("json", "csv", "tab", "tsv", "html", "xml", "pdf", "odt", "doc", "docx", "rtf")){
+    output <- paste(readtext::readtext(filepath)$text, collapse = " ")
   }
   
-  #Read characters from .docx files (requires antiword package)
-  if(fileextension == "docx"){
-    output <- paste(qdapTools::read_docx(filepath), collapse = " ")
+  #If pdf files should be examined for attachments, add text from attachment to output string
+  if(fileextension == "pdf" & pdfattachments){
+    attachments = pdftools::pdf_attachments(filepath)
+    for(x in attachments){
+      output <- paste(c(output, pdftools::pdf_text(x$data)), collapse = " ")
+    }
+  }
+  
+  #Read characters from .msg files (requires msgxtractr package)
+  if(fileextension == "msg"){
+    msgcontents = msgxtractr::read_msg(filepath)
+    output <- paste(c(msgcontents$subject, msgcontents$body$text), collapse = " ")
   }
   
   return(output)
