@@ -3002,6 +3002,7 @@ output$TopicTime <- renderPlotly({
   
   #Create plotly object
   graphdatplotly <- plot_ly(type = 'scatter', mode = "lines")
+  graphdatplotly = layout(graphdatplotly, xaxis = list(title = "Year"), yaxis = list(title = "Expected Topic Proportion"))
   
   #Loops for plotting the cofidence interval and topic line
   for(i in 1:length(plotTopics)){
