@@ -3024,20 +3024,19 @@ output$KeywordTimePlot <- renderPlot({
 output$TopicTime <- renderPlotly({
   
   #Get base effect estimates over time for all topics and topic model
-  graphdat = TopicGraphsCore()[["TopicEstimatedEffects"]]
+  graphdat = TopicGraphsCore()[["TopicGraph"]]
   topicmodel <- CreateTopicModel()[["TopicModel"]]
   meta <- CreateTopicModel()[["Metadata"]]
   
-  #Select cut graphdat down to selected topics
-  graphdat <- plot.estimateEffect(graphdat, covariate = "year", topics = unlist(topicclicks$selected), model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.95, npoints = max(meta$year) - min(meta$year) + 1)
+  #Extract data from the value returned by plot.estimateEffect to display on the chart for selected topics
+  topicsel = unlist(topicclicks$selected)
+  PlotLine = graphdat$means[topicsel]
+  plotConfidenceInterval = graphdat$ci[topicsel]
+  plotTopics = graphdat$labels[topicsel]
+  xvals <- graphdat$x
+  
   #Create a color palette to choose colors for each plot
   colorPalette = rainbow(length(unlist(topicclicks$selected)))
-
-  #Extract data from the value returned by plot.estimateEffect to display on the chart
-  PlotLine = graphdat$means
-  plotConfidenceInterval = graphdat$ci
-  plotTopics = graphdat$labels
-  xvals <- graphdat$x
   
   #Create plotly object
   graphdatplotly <- plot_ly(type = 'scatter', mode = "lines")
