@@ -2256,6 +2256,41 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     return(list('CoreTable' = tmp))
   })
   
+  #Create core sentence table for all sentence displaying and matching so it does not need to be recreated from scratch every time which takes a long time.
+  SentTableCore <- reactive({
+    
+    #Get data from other reactive functions
+    topicmodel <- CreateTopicModel()[["TopicModel"]]
+    meta <- CreateTopicModel()[["Metadata"]]
+    topicprob <- CreateTopicModel()[["TopicProb"]]
+    sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
+    sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+    details <- FilterDetail()
+    
+    #Match source document titles to each sentence
+    sourcedoc = meta$PMID[sentencetopics$num]
+    
+    #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
+    if(!is.null(details$hyperlink)){
+      sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
+    }else{
+      sourcedoc = details$title[sourcedoc]
+    }
+    
+    #Create data frame of sentences with placeholder columns for future processing outside of core
+    tmp = data.frame(Source.Document = sourcedoc,
+                     #Rank = 1,
+                     #Probability = 1,
+                     #Information.Entropy = 1,
+                     Match.Percent = 1,
+                     Sentence.Text = sentencetopics$text.var)
+    
+    #Add document IDs as row names for identification and subsequent additional processing as needed
+    #rownames(tmp) = details$PMID
+    
+    return(list('CoreTable' = tmp))
+  })
+  
   #Full text search to find documents that match document text provided in full text search
   SemanticSearch <- reactive({
     
@@ -3079,61 +3114,142 @@ output$TopicTime <- renderPlotly({
 #   return(output)
 # })
 
-#Organize sentences by relevance and present in live datatable
+#Initialize sentence relevance table
 output$RelevantSentencesDT <- DT::renderDataTable({
   
-  #Get data from other reactive functions
-  topicmodel <- CreateTopicModel()[["TopicModel"]]
-  meta <- CreateTopicModel()[["Metadata"]]
-  topicprob <- CreateTopicModel()[["TopicProb"]]
-  sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
-  sentencetopics <- sentenceanalysis$SentenceTopicPolarity
-  details <- FilterDetail()
+  # #Get data from other reactive functions
+  # topicmodel <- CreateTopicModel()[["TopicModel"]]
+  # meta <- CreateTopicModel()[["Metadata"]]
+  # topicprob <- CreateTopicModel()[["TopicProb"]]
+  # sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
+  # sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+  # details <- FilterDetail()
+  # 
+  # #Create formula with selected topics for probability
+  # sel = paste("Topic", unlist(topicclicks$selected))
+  # sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
+  # sentenceent = unlist(sentencetopics$entropy)
+  # ranksentences = unlist(Map("*", sentenceprob, sentenceent))
+  # 
+  # #sel <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
+  # #ranksentences <- apply(sentencetopics[,sel], MARGIN = 1, prod)
+  # 
+  # #Return top 5 sentences with highest combined product of all topics and sentence entropy
+  # #output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
+  # 
+  # #Match source document titles to each sentence
+  # sourcedoc = meta$PMID[sentencetopics$num]
+  # #sourcedoc = details$title[sourcedoc]
+  # 
+  # #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
+  # if(!is.null(details$hyperlink)){
+  #   sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
+  # }else{
+  #   sourcedoc = details$title[sourcedoc]
+  # }
+  # 
+  # #Create data frame of sentences ranked by the product of entropy and topic balance
+  # #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
+  # #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
+  # tmp = data.frame("Source Document" = sourcedoc,
+  #                  #Rank = round(ranksentences, 4),
+  #                  #Probability = round(sentenceprob, 4),
+  #                  #"Information Entropy" = round(sentenceent, 4),
+  #                  "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
+  #                  "Sentence Text" = sentencetopics$text.var)
+  # 
+  # #Order data frame by rank
+  # tmp = tmp[order(ranksentences, decreasing = TRUE),]
+  # #rownames(tmp) = details$PMID
+  # #tmp = tmp[as.character(closedocs),]
+  # #tmp$Match = round(100*(1 - distperc), digits = 1)
+  # 
+  # #browser()
   
-  #Create formula with selected topics for probability
-  sel = paste("Topic", unlist(topicclicks$selected))
-  sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
-  sentenceent = unlist(sentencetopics$entropy)
-  ranksentences = unlist(Map("*", sentenceprob, sentenceent))
+  #Get core static table data
+  tmp = SentTableCore ()[['CoreTable']]
   
-  #sel <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
-  #ranksentences <- apply(sentencetopics[,sel], MARGIN = 1, prod)
-  
-  #Return top 5 sentences with highest combined product of all topics and sentence entropy
-  #output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
-  
-  #Match source document titles to each sentence
-  sourcedoc = meta$PMID[sentencetopics$num]
-  #sourcedoc = details$title[sourcedoc]
-  
-  #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
-  if(!is.null(details$hyperlink)){
-    sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
-  }else{
-    sourcedoc = details$title[sourcedoc]
-  }
-  
-  #Create data frame of sentences ranked by the product of entropy and topic balance
-  #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
-  #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
-  tmp = data.frame("Source Document" = sourcedoc,
-                   #Rank = round(ranksentences, 4),
-                   #Probability = round(sentenceprob, 4),
-                   #"Information Entropy" = round(sentenceent, 4),
-                   "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
-                   "Sentence Text" = sentencetopics$text.var)
-  
-  #Order data frame by rank
-  tmp = tmp[order(ranksentences, decreasing = TRUE),]
-  #rownames(tmp) = details$PMID
-  #tmp = tmp[as.character(closedocs),]
-  #tmp$Match = round(100*(1 - distperc), digits = 1)
-  
-  #browser()
-  
-  DT::datatable(tmp, rownames = FALSE, filter='bottom', style='bootstrap', escape = FALSE, options=list(pageLength=5))
+  DT::datatable(tmp, filter='bottom', style='bootstrap', escape = FALSE, options=list(pageLength=5))
   
 })
+
+#Organize sentences by relevance and present in live datatable
+#Update sentence relevance table with search results based on selected topics
+# NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
+proxSentenceTable = dataTableProxy('RelevantSentencesDT')
+observe({
+  
+  #Get selected topics
+  topicsel = unlist(topicclicks$selected)
+  
+  isolate({
+    
+    # If something was returned by the semantic search, update the table
+    if(length(topicsel) > 0){
+      
+      #Get core static table data
+      tmp = SentTableCore ()[['CoreTable']]
+      
+      #Get data from other reactive functions
+      topicmodel <- CreateTopicModel()[["TopicModel"]]
+      meta <- CreateTopicModel()[["Metadata"]]
+      topicprob <- CreateTopicModel()[["TopicProb"]]
+      sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
+      sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+      details <- FilterDetail()
+      
+      #Create formula with selected topics for probability
+      sel = paste("Topic", unlist(topicclicks$selected))
+      sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
+      sentenceent = unlist(sentencetopics$entropy)
+      ranksentences = unlist(Map("*", sentenceprob, sentenceent))
+      
+      #sel <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
+      #ranksentences <- apply(sentencetopics[,sel], MARGIN = 1, prod)
+      
+      #Return top 5 sentences with highest combined product of all topics and sentence entropy
+      #output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
+      
+      # #Match source document titles to each sentence
+      # sourcedoc = meta$PMID[sentencetopics$num]
+      # #sourcedoc = details$title[sourcedoc]
+      # 
+      # #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
+      # if(!is.null(details$hyperlink)){
+      #   sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
+      # }else{
+      #   sourcedoc = details$title[sourcedoc]
+      # }
+      
+      #Create data frame of sentences ranked by the product of entropy and topic balance
+      #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
+      #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
+      # tmp = data.frame("Source Document" = sourcedoc,
+      #                  #Rank = round(ranksentences, 4),
+      #                  #Probability = round(sentenceprob, 4),
+      #                  #"Information Entropy" = round(sentenceent, 4),
+      #                  "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
+      #                  "Sentence Text" = sentencetopics$text.var)
+      
+      tmp$Match.Percent = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2)
+      
+      #Order data frame by rank
+      tmp = tmp[order(ranksentences, decreasing = TRUE),]
+      #rownames(tmp) = details$PMID
+      #tmp = tmp[as.character(closedocs),]
+      #tmp$Match = round(100*(1 - distperc), digits = 1)
+      
+      replaceData(proxSentenceTable, tmp)
+      
+    }
+    
+  })
+  
+})
+
+
+
+
 
 #Plot topic hierarchy
 output$TopicHierarchy <- renderPlot({
