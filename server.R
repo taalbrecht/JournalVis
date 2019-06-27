@@ -2921,7 +2921,7 @@ output$SemDocMatchTable <- DT::renderDataTable({
   #Remove row names so they are not displayed
   rownames(tmp) = NULL
   
-  DT::datatable(tmp, filter='bottom', style='bootstrap', escape = FALSE,
+  DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE,
                 options=list(pageLength=5, columnDefs = list(list(
                   targets = 3,
                   render = JS(
@@ -3169,7 +3169,7 @@ output$RelevantSentencesDT <- DT::renderDataTable({
   #Get core static table data
   tmp = SentTableCore ()[['CoreTable']]
   
-  DT::datatable(tmp, filter='bottom', style='bootstrap', escape = FALSE, options=list(pageLength=5))
+  DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE, options=list(pageLength=5))
   
 })
 
