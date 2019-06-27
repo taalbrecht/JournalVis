@@ -2226,6 +2226,71 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     
   })
   
+  #Create core document table for all document displaying and matching so it does not need to be recreated from scratch every time which takes a long time.
+  DocTableCore <- reactive({
+    
+    #Get abstract list and order by closeness to new document based on topic proportions
+    details <- FilterDetail()
+    
+    #Clean invalid characters from abstract that can cause issues
+    abstracts = lapply(details$abstract, clean)
+    
+    #Replace zero length abstracts with NA to allow for data frame to be built
+    abstracts[lengths(abstracts) == 0] = NA
+    abstracts = unlist(abstracts, recursive = FALSE)
+    
+    #Trim to appropriate max length
+    #abstracts = sapply(abstracts, substr, start = 1, stop = 1000)
+    
+    #Create data frame of title and abstract ranked by match
+    tmp = data.frame(Match = 1, Title = details$title, FullText = abstracts)
+    
+    #Add hyperlink to document title if it exists
+    if(!is.null(details$hyperlink)){
+      tmp$Title = paste0('<a href="',details$hyperlink,'"', "target='_blank'>",details$title,"</a>")
+    }
+    
+    #Add document IDs as row names for identification and subsequent additional processing as needed
+    rownames(tmp) = details$PMID
+    
+    return(list('CoreTable' = tmp))
+  })
+  
+  #Create core sentence table for all sentence displaying and matching so it does not need to be recreated from scratch every time which takes a long time.
+  SentTableCore <- reactive({
+    
+    #Get data from other reactive functions
+    topicmodel <- CreateTopicModel()[["TopicModel"]]
+    meta <- CreateTopicModel()[["Metadata"]]
+    topicprob <- CreateTopicModel()[["TopicProb"]]
+    sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
+    sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+    details <- FilterDetail()
+    
+    #Match source document titles to each sentence
+    sourcedoc = meta$PMID[sentencetopics$num]
+    
+    #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
+    if(!is.null(details$hyperlink)){
+      sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
+    }else{
+      sourcedoc = details$title[sourcedoc]
+    }
+    
+    #Create data frame of sentences with placeholder columns for future processing outside of core
+    tmp = data.frame(Source.Document = sourcedoc,
+                     #Rank = 1,
+                     #Probability = 1,
+                     #Information.Entropy = 1,
+                     Match.Percent = 1,
+                     Sentence.Text = sentencetopics$text.var)
+    
+    #Add document IDs as row names for identification and subsequent additional processing as needed
+    #rownames(tmp) = details$PMID
+    
+    return(list('CoreTable' = tmp))
+  })
+  
   #Full text search to find documents that match document text provided in full text search
   SemanticSearch <- reactive({
     
@@ -2847,60 +2912,68 @@ output$TopicSemMatch <- renderUI({
 
 })
 
-#Find documents that match document text provided in semantic search
-  output$SemDocMatchTable <- DT::renderDataTable({
+#Initialize semantic document matching table
+output$SemDocMatchTable <- DT::renderDataTable({
+  
+  #Get core table data
+  tmp = DocTableCore()[['CoreTable']]
+  
+  #Remove row names so they are not displayed
+  rownames(tmp) = NULL
+  
+  DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE,
+                options=list(pageLength=5, columnDefs = list(list(
+                  targets = 3,
+                  render = JS(
+                    "function(data, type, row, meta) {",
+                    "return type === 'display' && data.length > 1000 ?",
+                    "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
+                    "}")
+                ))))
+})
+
+#Update semantic document table with search results to find documents that match document text provided in semantic search
+# NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
+proxSemTable = dataTableProxy('SemDocMatchTable')
+observe({
+
+  #Get semantic search topic match vector and document ranking
+  semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
+
+  isolate({
     
-    #Get semantic search topic match vector and document ranking
-    semsearch <- SemanticSearch()
+    # If something was returned by the semantic search, update the table
+    if(!is.null(semsearch)){
     
-    #Sort topic vector from largest to smallest
-    topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
-    
-    #Get ranked list of most likely matching documents
-    closedocs <- semsearch$DocumentMatchRank
-    
-    #Get document match percent
-    distperc <- semsearch$DocumentCosDistance
-    
-    #Get abstract list and order by closeness to new document based on topic proportions
-    details <- FilterDetail()
-    
-    #Clean invalid characters from abstract that can cause issues
-    abstracts = lapply(details$abstract, clean)
-    
-    #Replace zero length abstracts with NA to allow for data frame to be built
-    abstracts[lengths(abstracts) == 0] = NA
-    abstracts = unlist(abstracts, recursive = FALSE)
-    
-    #Trim to appropriate max length
-    #abstracts = sapply(abstracts, substr, start = 1, stop = 3000)
-    
-    #Create data frame of title and abstract ranked by match
-    tmp = data.frame(Match = 1, Title = details$title, FullText = abstracts)
-    
-    #Add hyperlink to document title if it exists
-    if(!is.null(details$hyperlink)){
-      tmp$Title = paste0('<a href="',details$hyperlink,'"', "target='_blank'>",details$title,"</a>")
+      #Get core static table data
+      tmp = DocTableCore()[['CoreTable']]
+      
+  #Sort topic vector from largest to smallest
+  topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
+
+  #Get ranked list of most likely matching documents
+  closedocs <- semsearch$DocumentMatchRank
+
+  #Get document match percent
+  distperc <- semsearch$DocumentCosDistance
+
+  #Get abstract list and order by closeness to new document based on topic proportions
+  #details <- FilterDetail()
+
+  #Rank items by matching result of distance calculations to document ID in row name
+  tmp = tmp[as.character(closedocs),]
+  tmp$Match = round(100*(1 - distperc), digits = 1)
+
+  #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
+  rownames(tmp) = NULL
+
+  replaceData(proxSemTable, tmp)
+  
     }
-    
-    #Rank items
-    rownames(tmp) = details$PMID
-    tmp = tmp[as.character(closedocs),]
-    tmp$Match = round(100*(1 - distperc), digits = 1)
-    
-    #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
-    rownames(tmp) = NULL
-    
-    DT::datatable(tmp, filter='bottom', style='bootstrap', escape = FALSE,
-                  options=list(pageLength=5, columnDefs = list(list(
-      targets = 3,
-      render = JS(
-        "function(data, type, row, meta) {",
-        "return type === 'display' && data.length > 1000 ?",
-        "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
-        "}")
-    ))))
+
   })
+  
+})
 
 #Create plot of topic blend of document text provided in search
 output$SemanticSearchTimePlot <- renderPlot({
@@ -2986,20 +3059,19 @@ output$KeywordTimePlot <- renderPlot({
 output$TopicTime <- renderPlotly({
   
   #Get base effect estimates over time for all topics and topic model
-  graphdat = TopicGraphsCore()[["TopicEstimatedEffects"]]
+  graphdat = TopicGraphsCore()[["TopicGraph"]]
   topicmodel <- CreateTopicModel()[["TopicModel"]]
   meta <- CreateTopicModel()[["Metadata"]]
   
-  #Select cut graphdat down to selected topics
-  graphdat <- plot.estimateEffect(graphdat, covariate = "year", topics = unlist(topicclicks$selected), model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.95, npoints = max(meta$year) - min(meta$year) + 1)
+  #Extract data from the value returned by plot.estimateEffect to display on the chart for selected topics
+  topicsel = unlist(topicclicks$selected)
+  PlotLine = graphdat$means[topicsel]
+  plotConfidenceInterval = graphdat$ci[topicsel]
+  plotTopics = graphdat$labels[topicsel]
+  xvals <- graphdat$x
+  
   #Create a color palette to choose colors for each plot
   colorPalette = rainbow(length(unlist(topicclicks$selected)))
-
-  #Extract data from the value returned by plot.estimateEffect to display on the chart
-  PlotLine = graphdat$means
-  plotConfidenceInterval = graphdat$ci
-  plotTopics = graphdat$labels
-  xvals <- graphdat$x
   
   #Create plotly object
   graphdatplotly <- plot_ly(type = 'scatter', mode = "lines")
@@ -3042,61 +3114,142 @@ output$TopicTime <- renderPlotly({
 #   return(output)
 # })
 
-#Organize sentences by relevance and present in live datatable
+#Initialize sentence relevance table
 output$RelevantSentencesDT <- DT::renderDataTable({
   
-  #Get data from other reactive functions
-  topicmodel <- CreateTopicModel()[["TopicModel"]]
-  meta <- CreateTopicModel()[["Metadata"]]
-  topicprob <- CreateTopicModel()[["TopicProb"]]
-  sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
-  sentencetopics <- sentenceanalysis$SentenceTopicPolarity
-  details <- FilterDetail()
+  # #Get data from other reactive functions
+  # topicmodel <- CreateTopicModel()[["TopicModel"]]
+  # meta <- CreateTopicModel()[["Metadata"]]
+  # topicprob <- CreateTopicModel()[["TopicProb"]]
+  # sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
+  # sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+  # details <- FilterDetail()
+  # 
+  # #Create formula with selected topics for probability
+  # sel = paste("Topic", unlist(topicclicks$selected))
+  # sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
+  # sentenceent = unlist(sentencetopics$entropy)
+  # ranksentences = unlist(Map("*", sentenceprob, sentenceent))
+  # 
+  # #sel <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
+  # #ranksentences <- apply(sentencetopics[,sel], MARGIN = 1, prod)
+  # 
+  # #Return top 5 sentences with highest combined product of all topics and sentence entropy
+  # #output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
+  # 
+  # #Match source document titles to each sentence
+  # sourcedoc = meta$PMID[sentencetopics$num]
+  # #sourcedoc = details$title[sourcedoc]
+  # 
+  # #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
+  # if(!is.null(details$hyperlink)){
+  #   sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
+  # }else{
+  #   sourcedoc = details$title[sourcedoc]
+  # }
+  # 
+  # #Create data frame of sentences ranked by the product of entropy and topic balance
+  # #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
+  # #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
+  # tmp = data.frame("Source Document" = sourcedoc,
+  #                  #Rank = round(ranksentences, 4),
+  #                  #Probability = round(sentenceprob, 4),
+  #                  #"Information Entropy" = round(sentenceent, 4),
+  #                  "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
+  #                  "Sentence Text" = sentencetopics$text.var)
+  # 
+  # #Order data frame by rank
+  # tmp = tmp[order(ranksentences, decreasing = TRUE),]
+  # #rownames(tmp) = details$PMID
+  # #tmp = tmp[as.character(closedocs),]
+  # #tmp$Match = round(100*(1 - distperc), digits = 1)
+  # 
+  # #browser()
   
-  #Create formula with selected topics for probability
-  sel = paste("Topic", unlist(topicclicks$selected))
-  sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
-  sentenceent = unlist(sentencetopics$entropy)
-  ranksentences = unlist(Map("*", sentenceprob, sentenceent))
+  #Get core static table data
+  tmp = SentTableCore ()[['CoreTable']]
   
-  #sel <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
-  #ranksentences <- apply(sentencetopics[,sel], MARGIN = 1, prod)
-  
-  #Return top 5 sentences with highest combined product of all topics and sentence entropy
-  #output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
-  
-  #Match source document titles to each sentence
-  sourcedoc = meta$PMID[sentencetopics$num]
-  #sourcedoc = details$title[sourcedoc]
-  
-  #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
-  if(!is.null(details$hyperlink)){
-    sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
-  }else{
-    sourcedoc = details$title[sourcedoc]
-  }
-  
-  #Create data frame of sentences ranked by the product of entropy and topic balance
-  #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
-  #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
-  tmp = data.frame("Source Document" = sourcedoc,
-                   #Rank = round(ranksentences, 4),
-                   #Probability = round(sentenceprob, 4),
-                   #"Information Entropy" = round(sentenceent, 4),
-                   "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
-                   "Sentence Text" = sentencetopics$text.var)
-  
-  #Order data frame by rank
-  tmp = tmp[order(ranksentences, decreasing = TRUE),]
-  #rownames(tmp) = details$PMID
-  #tmp = tmp[as.character(closedocs),]
-  #tmp$Match = round(100*(1 - distperc), digits = 1)
-  
-  #browser()
-  
-  DT::datatable(tmp, rownames = FALSE, filter='bottom', style='bootstrap', escape = FALSE, options=list(pageLength=5))
+  DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE, options=list(pageLength=5))
   
 })
+
+#Organize sentences by relevance and present in live datatable
+#Update sentence relevance table with search results based on selected topics
+# NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
+proxSentenceTable = dataTableProxy('RelevantSentencesDT')
+observe({
+  
+  #Get selected topics
+  topicsel = unlist(topicclicks$selected)
+  
+  isolate({
+    
+    # If something was returned by the semantic search, update the table
+    if(length(topicsel) > 0){
+      
+      #Get core static table data
+      tmp = SentTableCore ()[['CoreTable']]
+      
+      #Get data from other reactive functions
+      topicmodel <- CreateTopicModel()[["TopicModel"]]
+      meta <- CreateTopicModel()[["Metadata"]]
+      topicprob <- CreateTopicModel()[["TopicProb"]]
+      sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
+      sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+      details <- FilterDetail()
+      
+      #Create formula with selected topics for probability
+      sel = paste("Topic", unlist(topicclicks$selected))
+      sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
+      sentenceent = unlist(sentencetopics$entropy)
+      ranksentences = unlist(Map("*", sentenceprob, sentenceent))
+      
+      #sel <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
+      #ranksentences <- apply(sentencetopics[,sel], MARGIN = 1, prod)
+      
+      #Return top 5 sentences with highest combined product of all topics and sentence entropy
+      #output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
+      
+      # #Match source document titles to each sentence
+      # sourcedoc = meta$PMID[sentencetopics$num]
+      # #sourcedoc = details$title[sourcedoc]
+      # 
+      # #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
+      # if(!is.null(details$hyperlink)){
+      #   sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
+      # }else{
+      #   sourcedoc = details$title[sourcedoc]
+      # }
+      
+      #Create data frame of sentences ranked by the product of entropy and topic balance
+      #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
+      #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
+      # tmp = data.frame("Source Document" = sourcedoc,
+      #                  #Rank = round(ranksentences, 4),
+      #                  #Probability = round(sentenceprob, 4),
+      #                  #"Information Entropy" = round(sentenceent, 4),
+      #                  "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
+      #                  "Sentence Text" = sentencetopics$text.var)
+      
+      tmp$Match.Percent = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2)
+      
+      #Order data frame by rank
+      tmp = tmp[order(ranksentences, decreasing = TRUE),]
+      #rownames(tmp) = details$PMID
+      #tmp = tmp[as.character(closedocs),]
+      #tmp$Match = round(100*(1 - distperc), digits = 1)
+      
+      replaceData(proxSentenceTable, tmp)
+      
+    }
+    
+  })
+  
+})
+
+
+
+
 
 #Plot topic hierarchy
 output$TopicHierarchy <- renderPlot({
