@@ -2226,6 +2226,36 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     
   })
   
+  #Create core document table for all document displaying and matching so it does not need to be recreated from scratch every time which takes a long time.
+  DocTableCore <- reactive({
+    
+    #Get abstract list and order by closeness to new document based on topic proportions
+    details <- FilterDetail()
+    
+    #Clean invalid characters from abstract that can cause issues
+    abstracts = lapply(details$abstract, clean)
+    
+    #Replace zero length abstracts with NA to allow for data frame to be built
+    abstracts[lengths(abstracts) == 0] = NA
+    abstracts = unlist(abstracts, recursive = FALSE)
+    
+    #Trim to appropriate max length
+    #abstracts = sapply(abstracts, substr, start = 1, stop = 1000)
+    
+    #Create data frame of title and abstract ranked by match
+    tmp = data.frame(Match = 1, Title = details$title, FullText = abstracts)
+    
+    #Add hyperlink to document title if it exists
+    if(!is.null(details$hyperlink)){
+      tmp$Title = paste0('<a href="',details$hyperlink,'"', "target='_blank'>",details$title,"</a>")
+    }
+    
+    #Add document IDs as row names for identification and subsequent additional processing as needed
+    rownames(tmp) = details$PMID
+    
+    return(list('CoreTable' = tmp))
+  })
+  
   #Full text search to find documents that match document text provided in full text search
   SemanticSearch <- reactive({
     
@@ -2847,60 +2877,68 @@ output$TopicSemMatch <- renderUI({
 
 })
 
-#Find documents that match document text provided in semantic search
-  output$SemDocMatchTable <- DT::renderDataTable({
+#Initialize semantic document matching table
+output$SemDocMatchTable <- DT::renderDataTable({
+  
+  #Get core table data
+  tmp = DocTableCore()[['CoreTable']]
+  
+  #Remove row names so they are not displayed
+  rownames(tmp) = NULL
+  
+  DT::datatable(tmp, filter='bottom', style='bootstrap', escape = FALSE,
+                options=list(pageLength=5, columnDefs = list(list(
+                  targets = 3,
+                  render = JS(
+                    "function(data, type, row, meta) {",
+                    "return type === 'display' && data.length > 1000 ?",
+                    "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
+                    "}")
+                ))))
+})
+
+#Update semantic document table with search results to find documents that match document text provided in semantic search
+# NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
+proxSemTable = dataTableProxy('SemDocMatchTable')
+observe({
+
+  #Get semantic search topic match vector and document ranking
+  semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
+
+  isolate({
     
-    #Get semantic search topic match vector and document ranking
-    semsearch <- SemanticSearch()
+    # If something was returned by the semantic search, update the table
+    if(!is.null(semsearch)){
     
-    #Sort topic vector from largest to smallest
-    topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
-    
-    #Get ranked list of most likely matching documents
-    closedocs <- semsearch$DocumentMatchRank
-    
-    #Get document match percent
-    distperc <- semsearch$DocumentCosDistance
-    
-    #Get abstract list and order by closeness to new document based on topic proportions
-    details <- FilterDetail()
-    
-    #Clean invalid characters from abstract that can cause issues
-    abstracts = lapply(details$abstract, clean)
-    
-    #Replace zero length abstracts with NA to allow for data frame to be built
-    abstracts[lengths(abstracts) == 0] = NA
-    abstracts = unlist(abstracts, recursive = FALSE)
-    
-    #Trim to appropriate max length
-    #abstracts = sapply(abstracts, substr, start = 1, stop = 3000)
-    
-    #Create data frame of title and abstract ranked by match
-    tmp = data.frame(Match = 1, Title = details$title, FullText = abstracts)
-    
-    #Add hyperlink to document title if it exists
-    if(!is.null(details$hyperlink)){
-      tmp$Title = paste0('<a href="',details$hyperlink,'"', "target='_blank'>",details$title,"</a>")
+      #Get core static table data
+      tmp = DocTableCore()[['CoreTable']]
+      
+  #Sort topic vector from largest to smallest
+  topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
+
+  #Get ranked list of most likely matching documents
+  closedocs <- semsearch$DocumentMatchRank
+
+  #Get document match percent
+  distperc <- semsearch$DocumentCosDistance
+
+  #Get abstract list and order by closeness to new document based on topic proportions
+  #details <- FilterDetail()
+
+  #Rank items by matching result of distance calculations to document ID in row name
+  tmp = tmp[as.character(closedocs),]
+  tmp$Match = round(100*(1 - distperc), digits = 1)
+
+  #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
+  rownames(tmp) = NULL
+
+  replaceData(proxSemTable, tmp)
+  
     }
-    
-    #Rank items
-    rownames(tmp) = details$PMID
-    tmp = tmp[as.character(closedocs),]
-    tmp$Match = round(100*(1 - distperc), digits = 1)
-    
-    #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
-    rownames(tmp) = NULL
-    
-    DT::datatable(tmp, filter='bottom', style='bootstrap', escape = FALSE,
-                  options=list(pageLength=5, columnDefs = list(list(
-      targets = 3,
-      render = JS(
-        "function(data, type, row, meta) {",
-        "return type === 'display' && data.length > 1000 ?",
-        "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
-        "}")
-    ))))
+
   })
+  
+})
 
 #Create plot of topic blend of document text provided in search
 output$SemanticSearchTimePlot <- renderPlot({
