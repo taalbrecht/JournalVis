@@ -3012,9 +3012,9 @@ output$TopicTime <- renderPlotly({
     # Add mean line
     graphdatplotly = add_trace(graphdatplotly, y = PlotLine[[i]], x = xvals, name = plotTopics[i], legendgroup = paste0("Line", i), line = list(color = chosenColor))
     
-    # Add upper and lower CI
-    graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][1,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
-    graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][2,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
+    ## Add upper and lower CI
+    #graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][1,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
+    #graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][2,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
 
   }
   
@@ -3077,10 +3077,13 @@ output$RelevantSentencesDT <- DT::renderDataTable({
   }
   
   #Create data frame of sentences ranked by the product of entropy and topic balance
+  #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
+  #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
   tmp = data.frame("Source Document" = sourcedoc,
-                   Rank = round(ranksentences, 4),
-                   Probability = round(sentenceprob, 4),
-                   "Information Entropy" = round(sentenceent, 4),
+                   #Rank = round(ranksentences, 4),
+                   #Probability = round(sentenceprob, 4),
+                   #"Information Entropy" = round(sentenceent, 4),
+                   "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
                    "Sentence Text" = sentencetopics$text.var)
   
   #Order data frame by rank
