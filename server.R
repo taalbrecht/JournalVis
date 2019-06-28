@@ -1993,7 +1993,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
         
         #Remove extraneous items from tokens
         quanttok = tokens(x = quanttok,
-                          remove_numbers = TRUE,
+                          remove_numbers = input$removenumbers,
                           remove_punct = TRUE,
                           remove_symbols = TRUE,
                           remove_separators = TRUE)
@@ -2003,7 +2003,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       
       #Tokenize while removing many items without multiword phrases
       quanttok = tokens(x = quantcorp,
-                        remove_numbers = TRUE,
+                        remove_numbers = input$removenumbers,
                         remove_punct = TRUE,
                         remove_symbols = TRUE,
                         remove_separators = TRUE)
@@ -2019,10 +2019,13 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       #tokens_lookup(...)
       
       #Create dfm (much quicker with tokens vs. corpus)
-      quantdfm = dfm(quanttok, tolower = TRUE, stem = FALSE)
+      quantdfm = dfm(quanttok, tolower = TRUE, stem = input$stemwords)
       
       #Trim out too frequent or too infrequent words based on proportion of documents they appear in
-      quantdfm = dfm_trim(quantdfm, min_docfreq = input$stmtermminpercent/100, max_docfreq = input$stmtermmaxpercent/100, docfreq_type = "prop")
+      quantdfm = dfm_trim(quantdfm,
+                          min_docfreq = input$stmtermminpercent/100,
+                          max_docfreq = input$stmtermmaxpercent/100,
+                          docfreq_type = "prop")
       
       #Convert to stm format
       out = convert(quantdfm, to = "stm")
@@ -2326,7 +2329,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
         
       #Tokenize while removing several undesirable items
       quanttok = tokens(x = quanttok,
-                        remove_numbers = TRUE,
+                        remove_numbers = input$removenumbers,
                         remove_punct = TRUE,
                         remove_symbols = TRUE,
                         remove_separators = TRUE)
@@ -2341,7 +2344,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       #tokens_lookup(...)
       
       #Create dfm (much quicker with tokens vs. corpus)
-      quantdfm = dfm(quanttok, tolower = TRUE, stem = FALSE)
+      quantdfm = dfm(quanttok, tolower = TRUE, stem = input$stemwords)
       
       #Convert to stm format
       temp = convert(quantdfm, to = "stm")
