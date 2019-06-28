@@ -1814,9 +1814,6 @@ if(length(details$keywords) == nrow(nodeData)){
   
   #   #Perform text cluster grouping of articles
   CreateTopicModel <- reactive({
-
-    #Get document details
-    details <- FilterDetail()
     
     ##Second option using stm (can expand to model topics by year or other meta data later, also much faster. Must set working directory to C directory for "Spectral" method to work)
     library(qdap)
@@ -1833,6 +1830,9 @@ if(length(details$keywords) == nrow(nodeData)){
       #Isolate internal code to prevent updates where the button has not been pressed
       isolate({
       
+        #Get document details
+        details <- FilterDetail()
+        
     #Process abstract text to stm text object. Includes control objects, including number removal, punctuation removal, lowercase, and stemming
     #metadata should have unique document ID that is used in other charts as first column
     meta <- data.frame(details$PMID, details$year)
