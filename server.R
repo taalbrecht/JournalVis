@@ -1902,9 +1902,9 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     }
     
     #Write raw text for ToPMine phrase identification
-    #writeLines(gsub("\n", ". ", details$abstract), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
-    #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
-    writeLines(gsub("\n", ". ", details$abstractonlyletters), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
+    writeLines(gsub("\n", ". ", details$abstract), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
+    ##Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
+    #writeLines(gsub("\n", ". ", details$abstractonlyletters), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
     
     #Run ToPMine phrase identification
     setwd(paste0(currentwd,"/ToPMine/topicalPhrases/"))
