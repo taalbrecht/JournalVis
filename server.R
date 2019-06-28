@@ -2955,20 +2955,21 @@ shinyServer(function(input, output, session) {
   proxSemTable = dataTableProxy('SemDocMatchTable')
   observe({
     
-    
     # Check to see if table has been initialized:
     if(tableinitialized$DocumentDT){
+      
+      #Get core static table
+      tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
+      
+      if(!is.null(tmp)){
       
       #Get semantic search topic match vector and document ranking
       semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
       
       isolate({
         
-        # If something was returned by the semantic search, update the table
+        # If something was returned by the semantic search and if the table exists, update the table
         if(!is.null(semsearch)){
-          
-          #Get core static table data
-          tmp = DocTableCore()[['CoreTable']]
           
           #Sort topic vector from largest to smallest
           topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
@@ -2978,9 +2979,6 @@ shinyServer(function(input, output, session) {
           
           #Get document match percent
           distperc <- semsearch$DocumentCosDistance
-          
-          #Get abstract list and order by closeness to new document based on topic proportions
-          #details <- FilterDetail()
           
           #Rank items by matching result of distance calculations to document ID in row name
           tmp = tmp[as.character(closedocs),]
@@ -2993,13 +2991,12 @@ shinyServer(function(input, output, session) {
           
         }else{
           #If no search terms have been entered, return a blank table
-          
           #Get core static table data
-          tmp = DocTableCore()[['CoreTable']][1,]
+          tmp = tmp[1,]
           
           #Return blank table for rendering
           tmp[1,] = ""
-          tmp$FullText = "Enter search terms to return results"
+          tmp[,ncol(tmp)] = "Enter search terms to return results"
           
           #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
           rownames(tmp) = NULL
@@ -3010,6 +3007,8 @@ shinyServer(function(input, output, session) {
         
         
       })
+      
+      }
       
     }
     
@@ -3187,6 +3186,11 @@ shinyServer(function(input, output, session) {
     # Check to see if table has been initialized:
     if(tableinitialized$SentenceDT){
       
+      #Get core static table
+      tmp = tryCatch(SentTableCore()[['CoreTable']], error = function(e) NULL)
+      
+      if(!is.null(tmp)){
+      
       #Get selected topics
       topicsel = unlist(topicclicks$selected)
       
@@ -3194,9 +3198,6 @@ shinyServer(function(input, output, session) {
         
         # If something was returned by the semantic search, update the table
         if(length(topicsel) > 0){
-          
-          #Get core static table data
-          tmp = SentTableCore ()[['CoreTable']]
           
           #Get data from other reactive functions
           sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
@@ -3219,19 +3220,20 @@ shinyServer(function(input, output, session) {
           
         }else{
           #If no topics have been selected, return a blank table
-          
-          #Get core static table data
-          tmp = SentTableCore ()[['CoreTable']][1,]
+          #Get single row of core static table data
+          tmp = tmp[1,]
           
           #Return blank table for rendering
           tmp[1,] = ""
-          tmp$Sentence.Text = "Select topic bubbles to see relevant sentences"
+          tmp[,ncol(tmp)] = "Select topic bubbles to see relevant sentences"
           
           replaceData(proxSentenceTable, tmp)
           
         }
         
       })
+      
+      }
       
     }
     
