@@ -56,6 +56,11 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  #Reactive value to contain flag stating whether DT objects have been initialized
+  tableinitialized <- reactiveValues()
+  tableinitialized$DocumentDT = FALSE
+  tableinitialized$SentenceDT = FALSE
+  
   #Reactive value to contain clicks from bar graphs of key terms to highlight on graph
   groupclicks <- reactiveValues()
   
@@ -67,7 +72,7 @@ shinyServer(function(input, output, session) {
   
   #Observer to capture topic clicks from topic graph
   observe ({  
-
+    
     if(is.null(input$topicClicked) == FALSE){
       
       if(isolate(input$topicClicked %in% topicclicks$selected == TRUE)){
@@ -84,7 +89,7 @@ shinyServer(function(input, output, session) {
   
   #Observer to clear topicclicks
   observe ({  
-
+    
     if(input$cleartopics > 0 | input$summary_search > 0 | input$link_search > 0 | input$detailed_search > 0){
       
       isolate(topicclicks$selected <- list())
@@ -113,11 +118,11 @@ shinyServer(function(input, output, session) {
   observe ({  
     
     if(input$cleargroups > 0 | input$summary_search > 0 | input$link_search > 0 | input$detailed_search > 0){
-        
-        isolate(groupclicks$keyword <- list())
-        isolate(groupclicks$articletype <- list())
-        
-      }
+      
+      isolate(groupclicks$keyword <- list())
+      isolate(groupclicks$articletype <- list())
+      
+    }
   })
   
   #Observer to apply groupclicks selections to generate a filtered list
@@ -133,47 +138,47 @@ shinyServer(function(input, output, session) {
       IDpass <- c()
       
       if(length(isolate(groupclicks$articletype)) > 0){
-      
-      #Get articles that match the selected article types
-#       articletypelist <- sapply(entfetch@PublicationType, FUN = "[")
-#       articletypelist <- sapply(articletypelist, FUN = tolower)
-      articletypelist <- entfetch$articletype
-      
-      for (i in 1:length(isolate(groupclicks$articletype))){
-      
-        matchvect <- c()
-        #Construct matching vector
-        matchvect <- lapply(articletypelist, FUN = "%in%", isolate(groupclicks$articletype[i]))
-        matchvect <- lapply(matchvect, FUN = "!")
-        matchvect <- lapply(matchvect, FUN = prod)
-        IDpass <- unique(c(IDpass, entfetch$PMID[which(matchvect == 0)]))
-      
-      }
-    }
-    
-    if(length(isolate(groupclicks$keyword)) > 0){
-      
-      
-#       articlekeywords <- sapply(entfetch@Mesh, FUN = "[", "Heading")
-#       articlekeywords <- sapply(articlekeywords, FUN = tolower)
-      articlekeywords <- entfetch$keywords
-      
-      for (i in 1:length(isolate(groupclicks$keyword))){
         
-        matchvect <- c()
-        #Construct matching vector
-        matchvect <- lapply(articlekeywords, FUN = "%in%", isolate(groupclicks$keyword[i]))
-        matchvect <- lapply(matchvect, FUN = "!")
-        matchvect <- lapply(matchvect, FUN = prod)
-        IDpass <- unique(c(IDpass, entfetch$PMID[which(matchvect == 0)]))
-    
-    }
-    }
-    
-    #Filter out IDpass list to only include IDs that are also included in filter list (allows for multiple filter applications)
-    
-    isolate(filterinclude$ids <- intersect(filterinclude$ids, IDpass))
-    
+        #Get articles that match the selected article types
+        #       articletypelist <- sapply(entfetch@PublicationType, FUN = "[")
+        #       articletypelist <- sapply(articletypelist, FUN = tolower)
+        articletypelist <- entfetch$articletype
+        
+        for (i in 1:length(isolate(groupclicks$articletype))){
+          
+          matchvect <- c()
+          #Construct matching vector
+          matchvect <- lapply(articletypelist, FUN = "%in%", isolate(groupclicks$articletype[i]))
+          matchvect <- lapply(matchvect, FUN = "!")
+          matchvect <- lapply(matchvect, FUN = prod)
+          IDpass <- unique(c(IDpass, entfetch$PMID[which(matchvect == 0)]))
+          
+        }
+      }
+      
+      if(length(isolate(groupclicks$keyword)) > 0){
+        
+        
+        #       articlekeywords <- sapply(entfetch@Mesh, FUN = "[", "Heading")
+        #       articlekeywords <- sapply(articlekeywords, FUN = tolower)
+        articlekeywords <- entfetch$keywords
+        
+        for (i in 1:length(isolate(groupclicks$keyword))){
+          
+          matchvect <- c()
+          #Construct matching vector
+          matchvect <- lapply(articlekeywords, FUN = "%in%", isolate(groupclicks$keyword[i]))
+          matchvect <- lapply(matchvect, FUN = "!")
+          matchvect <- lapply(matchvect, FUN = prod)
+          IDpass <- unique(c(IDpass, entfetch$PMID[which(matchvect == 0)]))
+          
+        }
+      }
+      
+      #Filter out IDpass list to only include IDs that are also included in filter list (allows for multiple filter applications)
+      
+      isolate(filterinclude$ids <- intersect(filterinclude$ids, IDpass))
+      
     }
     
   })
@@ -185,11 +190,11 @@ shinyServer(function(input, output, session) {
     if(input$summary_search > 0 | input$link_search > 0 | input$detailed_search > 0| input$clear_filters > 0 | input$database == "Load Model"){
       
       if(length(DBSwitch()[["Fetch"]]) > 0){
-      
-      entfetch <- DBSwitch()[["Fetch"]]
-      
-      isolate(filterinclude$ids <- entfetch$PMID)
-      
+        
+        entfetch <- DBSwitch()[["Fetch"]]
+        
+        isolate(filterinclude$ids <- entfetch$PMID)
+        
       }
     }
   })
@@ -208,7 +213,7 @@ shinyServer(function(input, output, session) {
         
         #Check to make sure file input, id column selector, and new column name are not blank
         if(!is.null(augmentframe)){
-        
+          
           # if(isolate(input$topicClicked %in% topicclicks$selected == TRUE)){
           #   
           #   isolate(topicclicks$selected <- topicclicks$selected[!(topicclicks$selected == input$topicClicked)])
@@ -222,16 +227,16 @@ shinyServer(function(input, output, session) {
           names(AugmentNewDat) = augmentframe[[input$augmentkey]]
           
           reactaugment$newdat[[length(reactaugment$newdat) + 1]] = list("DBKey" = input$keymatch,
-                                                          #"AugmentKeyDat" = augmentframe[[input$augmentkey]],
-                                                          #"AugmentNewDat" = augmentframe[[input$augmentnew]],
-                                                          "AugmentNewDat" = AugmentNewDat,
-                                                          "AugmentDatName" = input$augmentnew)
-            
+                                                                        #"AugmentKeyDat" = augmentframe[[input$augmentkey]],
+                                                                        #"AugmentNewDat" = augmentframe[[input$augmentnew]],
+                                                                        "AugmentNewDat" = AugmentNewDat,
+                                                                        "AugmentDatName" = input$augmentnew)
+          
         }
         
-        })
-
-      }
+      })
+      
+    }
   })
   
   ####################### Dynamic UI selectors
@@ -240,7 +245,7 @@ shinyServer(function(input, output, session) {
     
     #Read file if it exists
     if(!is.null(input$augment_input)){
-    output <- read.csv(input$augment_input$datapath, header = TRUE, stringsAsFactors = FALSE)
+      output <- read.csv(input$augment_input$datapath, header = TRUE, stringsAsFactors = FALSE)
     }else{
       output = NULL
     }
@@ -323,21 +328,21 @@ shinyServer(function(input, output, session) {
       loadeddat = new.env()
       load(input$preloadmodsel, envir = loadeddat)
     }
-
+    
     #File loader for basic and advanced user modes
     if(input$usermode != "Pre-Loaded"){
       
       inFile <- input$saved_model_file
-    #If there is no file, return blank lists
-    if (is.null(inFile)){
-      #DBSwitchLoad = list(Summary = list(), Fetch = list(), NodeEdge= list())
+      #If there is no file, return blank lists
+      if (is.null(inFile)){
+        #DBSwitchLoad = list(Summary = list(), Fetch = list(), NodeEdge= list())
+        
+        return(list())
+      }
       
-      return(list())
-    }
-    
-    #Load the model file and return 
-    loadeddat = new.env()
-    load(inFile$datapath, envir = loadeddat)
+      #Load the model file and return 
+      loadeddat = new.env()
+      load(inFile$datapath, envir = loadeddat)
     }
     
     #Return list of loaded data
@@ -400,8 +405,8 @@ shinyServer(function(input, output, session) {
     else{
       #
       isolate(entfetch <- EUtilsGet(EntrezSummary()[["ids"]], db = input$database))
-      }
-      
+    }
+    
     
     
     if(length(entfetch) > 0){
@@ -435,15 +440,15 @@ shinyServer(function(input, output, session) {
       
       #Construct data to show on hover
       hovertip <- paste0("<b>Title: </b>", title,
-                              "<br /><b>Year: </b>", year,
-                              "<a href=", '"http://www.ncbi.nlm.nih.gov/pubmed/', PMID, '"target = "_blank"><br /><b>Pubmed ID: </b>', PMID, "</a>")
+                         "<br /><b>Year: </b>", year,
+                         "<a href=", '"http://www.ncbi.nlm.nih.gov/pubmed/', PMID, '"target = "_blank"><br /><b>Pubmed ID: </b>', PMID, "</a>")
       
       #Construct data to show on click
       clicktip <- paste0("<b>Title: </b>", title,
-                                   "<br /><b>Year: </b>", year,
-                                   "<a href=", '"http://www.ncbi.nlm.nih.gov/pubmed/', PMID, '"target = "_blank"><br /><b>Pubmed ID: </b>', PMID, "</a>",
-                                   "<br /><b>Authors: </b>", authors,
-                                   "<br /><b>Abstract: </b>", abstract)
+                         "<br /><b>Year: </b>", year,
+                         "<a href=", '"http://www.ncbi.nlm.nih.gov/pubmed/', PMID, '"target = "_blank"><br /><b>Pubmed ID: </b>', PMID, "</a>",
+                         "<br /><b>Authors: </b>", authors,
+                         "<br /><b>Abstract: </b>", abstract)
       
       
       #####Get article linkage structure#####
@@ -460,7 +465,7 @@ shinyServer(function(input, output, session) {
       
     }else{
       return(entfetch <- list())}
-
+    
   })
   
   
@@ -499,8 +504,8 @@ shinyServer(function(input, output, session) {
       #
       #Get details. See dataset plosfields in package rplos for available fields for "fl"
       isolate(plosfetch <- searchplos(q = input$search_text, limit = 1000,
-                                    fl = c("id", "title", "abstract", "article_type", "author", "publication_date", "received_date", "accepted_date", "subject", "journal")))
-     
+                                      fl = c("id", "title", "abstract", "article_type", "author", "publication_date", "received_date", "accepted_date", "subject", "journal")))
+      
       if(length(plosfetch) > 0){
         
         #Get type of article (journal, clinical, etc)
@@ -551,7 +556,7 @@ shinyServer(function(input, output, session) {
         
       }else{
         return(plosfetch <- list())}
-       
+      
     }
     
   })
@@ -578,7 +583,7 @@ shinyServer(function(input, output, session) {
     }
     return(structure(list("CitationFrame" = CitationFrame, "ReferenceList" = ReferenceList, "TimesCited" = TimesCited)))
   })
-
+  
   ####arxiv FETCH FUNCTIONS###
   
   #Perform summary search to get results count
@@ -591,7 +596,7 @@ shinyServer(function(input, output, session) {
       
     }
     else{
-
+      
       query <- isolate(strsplit(input$search_text, split = " ", fixed = TRUE))
       
       query <- query[which(length(query) > 0)]
@@ -712,7 +717,7 @@ shinyServer(function(input, output, session) {
       
     }
     else{
-
+      
       
       query <- isolate(strsplit(input$search_text, split = " ", fixed = TRUE))
       
@@ -724,16 +729,16 @@ shinyServer(function(input, output, session) {
       
       #Start with list of all possible elements
       if(length(searchsummary) > 0){
-      filepathresults <- unique(unlist(sapply(searchsummary, "[", "Filepaths")))
-      
-      #Locate filepaths in each returned result for AND search
-      for (i in 1:length(searchsummary)){
-       
-         filepathresults <- filepathresults[filepathresults %in% searchsummary[[1]]$Filepaths]
+        filepathresults <- unique(unlist(sapply(searchsummary, "[", "Filepaths")))
         
+        #Locate filepaths in each returned result for AND search
+        for (i in 1:length(searchsummary)){
+          
+          filepathresults <- filepathresults[filepathresults %in% searchsummary[[1]]$Filepaths]
+          
+          
+        }
         
-      }
-  
       }
       
       ##Temporary code to take all files in path for now. Replace with functioning search later
@@ -859,7 +864,7 @@ shinyServer(function(input, output, session) {
   
   
   #Dynamic input generators for CSV file input below:
-
+  
   #Dropdown for selecting raw text column
   output$ui_CSVID <- renderUI({
     
@@ -883,7 +888,7 @@ shinyServer(function(input, output, session) {
                 choices = choicevals, selected = NULL)
     
   })
-    
+  
   #Dropdown for selecting article type column
   output$ui_CSVarticletype <- renderUI({
     
@@ -983,7 +988,7 @@ shinyServer(function(input, output, session) {
         #Use first 50 characters of text for title for now. Consider adding separate column later if desired
         #title <- localfetch$Filenames
         title <- sapply(localfetch[input$CSVtext], function(x) strtrim(as.character(x), width = 50))
-                        #strtrim(localfetch[input$CSVtext], width = rep(50, times = length(PMID)))
+        #strtrim(localfetch[input$CSVtext], width = rep(50, times = length(PMID)))
         
         ##No parallel for these right now. Use single placeholder
         #articletype <- as.list(localfetch[[input$CSVarticletype]])
@@ -1110,7 +1115,7 @@ shinyServer(function(input, output, session) {
   
   #Fetch PLOS articles
   OPSFetch<-reactive({
-
+    
     if(input$detailed_search==0 | (length(isolate(OPSSummary()[["count"]])) == 0)){
       
       return(opsfetch <- list())
@@ -1132,9 +1137,9 @@ shinyServer(function(input, output, session) {
         
         title <- sapply(opsfetch$Title, FUN = paste, collapse = "|")
         
-#         #For now, type will be country code
-#         articletype <- sapply(PMID, FUN = substr, start = 0, stop = 2)
-#         articletype <- sapply(articletype, FUN = tolower)
+        #         #For now, type will be country code
+        #         articletype <- sapply(PMID, FUN = substr, start = 0, stop = 2)
+        #         articletype <- sapply(articletype, FUN = tolower)
         
         #Use patent classification as article type
         articletype <- opsfetch$PatentClassifications
@@ -1216,9 +1221,9 @@ shinyServer(function(input, output, session) {
       #ReferenceList <- list()
       #TimesCited <- list()
       
-       isolate(CitationFrame <- OPSFetch()[["CitationFrame"]])
-       isolate(ReferenceList <- OPSFetch()[["ReferenceList"]])
-       isolate(TimesCited <- OPSFetch()[["TimesCited"]])
+      isolate(CitationFrame <- OPSFetch()[["CitationFrame"]])
+      isolate(ReferenceList <- OPSFetch()[["ReferenceList"]])
+      isolate(TimesCited <- OPSFetch()[["TimesCited"]])
       
       if(is.null(CitationFrame) == TRUE){
         
@@ -1228,7 +1233,7 @@ shinyServer(function(input, output, session) {
     }
     return(structure(list("CitationFrame" = CitationFrame, "ReferenceList" = ReferenceList, "TimesCited" = TimesCited)))
   })
-
+  
   #Function to add data from related excel or R files to information extracted from databases
   DBAdd <- reactive({
     
@@ -1306,11 +1311,11 @@ shinyServer(function(input, output, session) {
       #browser()
       #Load existing model
       loaddat = LoadModel()
-
+      
       Summary = loaddat$DBSwitchLoad$Summary
       Fetch = loaddat$DBSwitchLoad$Fetch
       NodeEdge = loaddat$DBSwitchLoad$NodeEdge
-
+      
     }
     
     #Loop through reactive variable for augmentation data here
@@ -1352,17 +1357,17 @@ shinyServer(function(input, output, session) {
       
       output <- lapply(fetch, FUN = "[", filtered)
       
-#       PMID <- fetch$PMID[filtered]
-#       title <- fetch$title[filtered]
-#       articletype <- fetch$articletype[filtered]
-#       journal <- fetch$journal[filtered]
-#       year <- fetch$year[filtered]
-#       DOI <- fetch$DOI[filtered]
-#       abstract <- fetch$abstract[filtered]
-#       keywords <- fetch$keywords[filtered]
-#       authors <- fetch$authors[filtered]
-#       
-#       return(structure(list("title" = title, "articletype" = articletype, "journal" = journal, "year" = year, "DOI" = DOI, "abstract" = abstract, "keywords" = keywords, "authors" = authors, "PMID" = PMID)))
+      #       PMID <- fetch$PMID[filtered]
+      #       title <- fetch$title[filtered]
+      #       articletype <- fetch$articletype[filtered]
+      #       journal <- fetch$journal[filtered]
+      #       year <- fetch$year[filtered]
+      #       DOI <- fetch$DOI[filtered]
+      #       abstract <- fetch$abstract[filtered]
+      #       keywords <- fetch$keywords[filtered]
+      #       authors <- fetch$authors[filtered]
+      #       
+      #       return(structure(list("title" = title, "articletype" = articletype, "journal" = journal, "year" = year, "DOI" = DOI, "abstract" = abstract, "keywords" = keywords, "authors" = authors, "PMID" = PMID)))
       
       return(output)
       
@@ -1475,104 +1480,104 @@ shinyServer(function(input, output, session) {
     
     #If there are connections, create a sugiyama network of connected nodes and fill orphans in around it
     if(input$graphlayout == "preset"){
-    if(is.null(FilterDetail()[["year"]]) == FALSE){
-    
-    # NodeEdge <- DBSwitch()[["NodeEdge"]]
-    # 
-    # edgeList <- NodeEdge[["CitationFrame"]]
-    # 
-    # startnodes <- FilterDetail()[["PMID"]]
-    # 
-    # if(ncol(edgeList) == 2){
-    # 
-    # #Filter edgeList by node IDs
-    # edgeList <- edgeList[intersect(which(edgeList[,1] %in% startnodes), which(edgeList[,2] %in% startnodes)),]
-    # 
-    # colnames(edgeList) <- c("source", "target")
-    # 
-    # }
-    
-    layer <- FilterDetail()[["year"]]
-    
-    #nodes <- startnodes
-    
-    #id <- nodes
-    #name <- nodes
-    #nodeData <- data.frame(id, name, stringsAsFactors=FALSE)
-    nodeData$x <- as.integer(NA)
-    
-    #Translate year into layer number and store as y variable
-    nodeData$y <- as.integer(abs(layer - max(layer) - 1))
-    
-#     #Set default center position
-#     centerspan <- c(0,1)
-    
-    #Set default start position for unconnected nodes
-    startpos <- 0
-    
-    #If there are edges, perform minimum crossing layout for edges
-    if(nrow(edgeList) > 0){
-     
-      #Find the row index of the connected nodes
-      connectindex <- which(nodeData[["id"]] %in% c(edgeList[,1], edgeList[,2]))
-      
-      #Build network and remove redundant connections (self and duplicate connections)
-      net <- graph.data.frame(edgeList, nodeData[connectindex,], directed = TRUE)
-      net = simplify(net)
-      sublayer <- layer[connectindex]
-      #Apply sugiyama method to nodes with connections only
-      sublayout <- layout.sugiyama(net, sublayer)
-      
-      #Translate sublayout results for x into nodeData network
-      nodeData$x[connectindex] <- sublayout$layout[,1]
-      
-#       #Clear center space of graph for connected nodes
-#       centerspan <- c(min(nodeData$x, na.rm = TRUE)- 1, max(nodeData$x, na.rm = TRUE) + 1)
-      
-      #Find rightmost position of set and define as starting position for unconnected nodes
-      startpos <- max(nodeData$x, na.rm = TRUE) + 1
-
-    }
-    
-    #Randomly space remaining nodes to the right of the connected nodes for each layer in increments of 1
-    for (i in min(nodeData$y):max(nodeData$y)){
-      
-      #Only execute code for layers that have nodes in them where the position of at least one node has not yet been set
-      if(sum(nodeData$y == i) > 0 & sum(is.na(nodeData$x[nodeData$y == i])) > 0){
+      if(is.null(FilterDetail()[["year"]]) == FALSE){
         
-        xvalloop <- nodeData$x[nodeData$y == i]
-
-                #position remaining nodes to the right of the network
-                for (j in 1:sum(is.na(xvalloop))){
-                  
-                  nodeData$x[which(is.na(nodeData$x) & nodeData$y == i)][1] <- j - 1 + startpos
-                  
-                }
+        # NodeEdge <- DBSwitch()[["NodeEdge"]]
+        # 
+        # edgeList <- NodeEdge[["CitationFrame"]]
+        # 
+        # startnodes <- FilterDetail()[["PMID"]]
+        # 
+        # if(ncol(edgeList) == 2){
+        # 
+        # #Filter edgeList by node IDs
+        # edgeList <- edgeList[intersect(which(edgeList[,1] %in% startnodes), which(edgeList[,2] %in% startnodes)),]
+        # 
+        # colnames(edgeList) <- c("source", "target")
+        # 
+        # }
         
-#         #position remaining nodes around center for the current layer
-#         switchflip <- 1
-#         for (j in 1:sum(is.na(xvalloop))){
-#           
-#           
-#           nodeData$x[which(is.na(nodeData$x) & nodeData$y == i)][1] <- centerspanloop[switchflip]
-#           
-#           centerspanloop[switchflip] <- centerspanloop[switchflip] + (-1)^switchflip
-#           switchflip <- switchflip - (-1)^switchflip
-#           
-#         }
+        layer <- FilterDetail()[["year"]]
         
+        #nodes <- startnodes
+        
+        #id <- nodes
+        #name <- nodes
+        #nodeData <- data.frame(id, name, stringsAsFactors=FALSE)
+        nodeData$x <- as.integer(NA)
+        
+        #Translate year into layer number and store as y variable
+        nodeData$y <- as.integer(abs(layer - max(layer) - 1))
+        
+        #     #Set default center position
+        #     centerspan <- c(0,1)
+        
+        #Set default start position for unconnected nodes
+        startpos <- 0
+        
+        #If there are edges, perform minimum crossing layout for edges
+        if(nrow(edgeList) > 0){
+          
+          #Find the row index of the connected nodes
+          connectindex <- which(nodeData[["id"]] %in% c(edgeList[,1], edgeList[,2]))
+          
+          #Build network and remove redundant connections (self and duplicate connections)
+          net <- graph.data.frame(edgeList, nodeData[connectindex,], directed = TRUE)
+          net = simplify(net)
+          sublayer <- layer[connectindex]
+          #Apply sugiyama method to nodes with connections only
+          sublayout <- layout.sugiyama(net, sublayer)
+          
+          #Translate sublayout results for x into nodeData network
+          nodeData$x[connectindex] <- sublayout$layout[,1]
+          
+          #       #Clear center space of graph for connected nodes
+          #       centerspan <- c(min(nodeData$x, na.rm = TRUE)- 1, max(nodeData$x, na.rm = TRUE) + 1)
+          
+          #Find rightmost position of set and define as starting position for unconnected nodes
+          startpos <- max(nodeData$x, na.rm = TRUE) + 1
+          
+        }
+        
+        #Randomly space remaining nodes to the right of the connected nodes for each layer in increments of 1
+        for (i in min(nodeData$y):max(nodeData$y)){
+          
+          #Only execute code for layers that have nodes in them where the position of at least one node has not yet been set
+          if(sum(nodeData$y == i) > 0 & sum(is.na(nodeData$x[nodeData$y == i])) > 0){
+            
+            xvalloop <- nodeData$x[nodeData$y == i]
+            
+            #position remaining nodes to the right of the network
+            for (j in 1:sum(is.na(xvalloop))){
+              
+              nodeData$x[which(is.na(nodeData$x) & nodeData$y == i)][1] <- j - 1 + startpos
+              
+            }
+            
+            #         #position remaining nodes around center for the current layer
+            #         switchflip <- 1
+            #         for (j in 1:sum(is.na(xvalloop))){
+            #           
+            #           
+            #           nodeData$x[which(is.na(nodeData$x) & nodeData$y == i)][1] <- centerspanloop[switchflip]
+            #           
+            #           centerspanloop[switchflip] <- centerspanloop[switchflip] + (-1)^switchflip
+            #           switchflip <- switchflip - (-1)^switchflip
+            #           
+            #         }
+            
+            
+          }
+          
+        }
+        #Change to preset layout if this section of code was executed
+        layout <- "preset"
         
       }
-      
     }
-#Change to preset layout if this section of code was executed
-layout <- "preset"
-
-    }
-    }
-
-return(structure(list("layout" = layout, "nodeData" = nodeData)))
-
+    
+    return(structure(list("layout" = layout, "nodeData" = nodeData)))
+    
   })
   
   #Create node edge matrix from journal search results
@@ -1595,12 +1600,12 @@ return(structure(list("layout" = layout, "nodeData" = nodeData)))
     
     
     if(ncol(edgeList) == 2){
-    #Filter edgeList by node subset
-    
-    
-    edgeList <- edgeList[intersect(which(edgeList[,1] %in% startnodes), which(edgeList[,2] %in% startnodes)),]
-    
-    colnames(edgeList) <- c("source", "target")
+      #Filter edgeList by node subset
+      
+      
+      edgeList <- edgeList[intersect(which(edgeList[,1] %in% startnodes), which(edgeList[,2] %in% startnodes)),]
+      
+      colnames(edgeList) <- c("source", "target")
     }
     
     #If there are no edges, create blank row so that the graph can still be rendered
@@ -1618,7 +1623,7 @@ return(structure(list("layout" = layout, "nodeData" = nodeData)))
     id <- nodes
     name <- nodes
     nodeData <- data.frame(id, name, stringsAsFactors=FALSE)
-
+    
     
     #Create tooltip info for network graph
     if(length(details$title) == nrow(nodeData)){
@@ -1626,13 +1631,13 @@ return(structure(list("layout" = layout, "nodeData" = nodeData)))
       nodeData$href <- details[["HoverTip"]]
       nodeData$hrefclick <- details[["ClickTip"]]
       
-#       nodeData$href <- paste0("<b>Title: </b>", details[["title"]],
-#                               "<br /><b>Year: </b>", details[["year"]],
-#                               "<a href=", '"http://www.ncbi.nlm.nih.gov/pubmed/', details[["PMID"]], '"target = "_blank"><br /><b>Pubmed ID: </b>', details[["PMID"]], "</a>")
-#       nodeData$hrefclick <- paste0("<b>Title: </b>", details[["title"]],
-#                                    "<br /><b>Year: </b>", details[["year"]],
-#                                    "<a href=", '"http://www.ncbi.nlm.nih.gov/pubmed/', details[["PMID"]], '"target = "_blank"><br /><b>Pubmed ID: </b>', details[["PMID"]], "</a>",
-#                                    "<br /><b>Abstract: </b>", details[["abstract"]])
+      #       nodeData$href <- paste0("<b>Title: </b>", details[["title"]],
+      #                               "<br /><b>Year: </b>", details[["year"]],
+      #                               "<a href=", '"http://www.ncbi.nlm.nih.gov/pubmed/', details[["PMID"]], '"target = "_blank"><br /><b>Pubmed ID: </b>', details[["PMID"]], "</a>")
+      #       nodeData$hrefclick <- paste0("<b>Title: </b>", details[["title"]],
+      #                                    "<br /><b>Year: </b>", details[["year"]],
+      #                                    "<a href=", '"http://www.ncbi.nlm.nih.gov/pubmed/', details[["PMID"]], '"target = "_blank"><br /><b>Pubmed ID: </b>', details[["PMID"]], "</a>",
+      #                                    "<br /><b>Abstract: </b>", details[["abstract"]])
       
     }
     
@@ -1648,9 +1653,9 @@ return(structure(list("layout" = layout, "nodeData" = nodeData)))
       for(i in 1:length(citationcount)){
         
         if(names(citationcount[i]) %in% nodeData[["id"]]){
-        
+          
           nodeData[which(nodeData[["id"]] %in% names(citationcount[i])),"height"] <- citationcount[i]
-        
+          
         }
       }
       
@@ -1659,14 +1664,14 @@ return(structure(list("layout" = layout, "nodeData" = nodeData)))
         nodeData$height <- minpix
         
       }else{
-      
+        
         #Linear scaling of node size based on number of citations
-      slope <- (maxpix - minpix)/(max(nodeData$height) - min(nodeData$height))
-      nodeData$height <- slope*(nodeData$height - min(nodeData$height)) + minpix
-      
-      #Apply log scaling to node size based on number of citations
-      nodeData$height <- (maxpix - minpix)*(log(nodeData$height) - log(min(nodeData$height)))/(log(max(nodeData$height)) - log(min(nodeData$height))) + minpix
-      
+        slope <- (maxpix - minpix)/(max(nodeData$height) - min(nodeData$height))
+        nodeData$height <- slope*(nodeData$height - min(nodeData$height)) + minpix
+        
+        #Apply log scaling to node size based on number of citations
+        nodeData$height <- (maxpix - minpix)*(log(nodeData$height) - log(min(nodeData$height)))/(log(max(nodeData$height)) - log(min(nodeData$height))) + minpix
+        
       }
       
       nodeData$width <- nodeData$height
@@ -1677,85 +1682,85 @@ return(structure(list("layout" = layout, "nodeData" = nodeData)))
       nodeData$height <- 20
       
     }
-
-#Article type colorizer
-if(length(details$articletype) == nrow(nodeData)){
-  
-  #Base node color to be set per below
-  nodeData$color <- "#888888"
-  
-  articletypefreq <- CategoryCount()[["articletypefreq"]]
-  
-  #Execute different color application if user has selected an input
-  if(length(groupclicks$articletype) > 0){
     
-  #Color based on selected inputs and drop last two characters as those are for transparency
-  randcolor <- substr(rainbow(length(groupclicks$articletype)), 1,7)
-  
-  for (i in 1:length(groupclicks$articletype)){
+    #Article type colorizer
+    if(length(details$articletype) == nrow(nodeData)){
+      
+      #Base node color to be set per below
+      nodeData$color <- "#888888"
+      
+      articletypefreq <- CategoryCount()[["articletypefreq"]]
+      
+      #Execute different color application if user has selected an input
+      if(length(groupclicks$articletype) > 0){
+        
+        #Color based on selected inputs and drop last two characters as those are for transparency
+        randcolor <- substr(rainbow(length(groupclicks$articletype)), 1,7)
+        
+        for (i in 1:length(groupclicks$articletype)){
+          
+          matchvect <- c()
+          #Construct matching vector
+          matchvect <- lapply(details$articletype, FUN = "%in%", groupclicks$articletype[i])
+          matchvect <- lapply(matchvect, FUN = "!")
+          matchvect <- lapply(matchvect, FUN = prod)
+          nodeData$color[which(matchvect == 0)] <- randcolor[i]
+          
+          
+          #Apply color to article frquency list
+          articletypefreq$color[which(articletypefreq$name == groupclicks$articletype[i])] <- randcolor[i]
+          
+        }
+      }
+      
+    }
     
-    matchvect <- c()
-    #Construct matching vector
-    matchvect <- lapply(details$articletype, FUN = "%in%", groupclicks$articletype[i])
-    matchvect <- lapply(matchvect, FUN = "!")
-    matchvect <- lapply(matchvect, FUN = prod)
-    nodeData$color[which(matchvect == 0)] <- randcolor[i]
-    
-    
-    #Apply color to article frquency list
-     articletypefreq$color[which(articletypefreq$name == groupclicks$articletype[i])] <- randcolor[i]
-    
-  }
-  }
-  
-}
- 
-#Article keyword colorizer
-if(length(details$keywords) == nrow(nodeData)){
-  
-  #Base node overlay color to be set to match graph background color  
-  nodeData$bordercolor <- "#FF00FF"
-  
-  #Default overlay pixel width to be zero on unselected nodes
-  nodeData$borderwidth = "0"
-  
-  #Default overlay opacity to be zero (hidden) on unselected nodes
-  nodeData$borderopacity <- "0"
-
-  
-  keywordfreq <- CategoryCount()[["keywordfreq"]]
-  
-  #Execute different color application if user has selected an input
-  if(length(groupclicks$keyword) > 0){
-  
-  #Color based on selected inputs and drop last two characters as those are for transparency
-  
-  
-  randcolor <- substr(rainbow(length(groupclicks$keyword)), 1,7)
-  
-  
-  for (i in 1:length(groupclicks$keyword)){
-    
-    matchvect <- c()
-    #Construct matching vector
-    matchvect <- lapply(details$keywords, FUN = "%in%", groupclicks$keyword[i])
-    matchvect <- lapply(matchvect, FUN = "!")
-    matchvect <- lapply(matchvect, FUN = prod)
-    nodeData$bordercolor[which(matchvect == 0)] <- randcolor[i]
-    
-    #Set overlay opacity to 10% for selected node groups
-    nodeData$borderopacity[which(matchvect == 0)] <- 0.25
-    
-    #Set overlay padding to 10 pixels for selected node groups
-    nodeData$borderwidth[which(matchvect == 0)] <- nodeData$width[which(matchvect == 0)]*1
-    
-    #Apply color to article frquency list
-    keywordfreq$color[which(keywordfreq$name == groupclicks$keyword[i])] <- randcolor[i]
-    
-  }
-  }
-  
-}
+    #Article keyword colorizer
+    if(length(details$keywords) == nrow(nodeData)){
+      
+      #Base node overlay color to be set to match graph background color  
+      nodeData$bordercolor <- "#FF00FF"
+      
+      #Default overlay pixel width to be zero on unselected nodes
+      nodeData$borderwidth = "0"
+      
+      #Default overlay opacity to be zero (hidden) on unselected nodes
+      nodeData$borderopacity <- "0"
+      
+      
+      keywordfreq <- CategoryCount()[["keywordfreq"]]
+      
+      #Execute different color application if user has selected an input
+      if(length(groupclicks$keyword) > 0){
+        
+        #Color based on selected inputs and drop last two characters as those are for transparency
+        
+        
+        randcolor <- substr(rainbow(length(groupclicks$keyword)), 1,7)
+        
+        
+        for (i in 1:length(groupclicks$keyword)){
+          
+          matchvect <- c()
+          #Construct matching vector
+          matchvect <- lapply(details$keywords, FUN = "%in%", groupclicks$keyword[i])
+          matchvect <- lapply(matchvect, FUN = "!")
+          matchvect <- lapply(matchvect, FUN = prod)
+          nodeData$bordercolor[which(matchvect == 0)] <- randcolor[i]
+          
+          #Set overlay opacity to 10% for selected node groups
+          nodeData$borderopacity[which(matchvect == 0)] <- 0.25
+          
+          #Set overlay padding to 10 pixels for selected node groups
+          nodeData$borderwidth[which(matchvect == 0)] <- nodeData$width[which(matchvect == 0)]*1
+          
+          #Apply color to article frquency list
+          keywordfreq$color[which(keywordfreq$name == groupclicks$keyword[i])] <- randcolor[i]
+          
+        }
+      }
+      
+    }
     #Set edgeList to edgeData prior to calculating opacity. Opacity values will be added back to edgeData after calculations below
     edgeData <- edgeList
     
@@ -1814,7 +1819,7 @@ if(length(details$keywords) == nrow(nodeData)){
   
   #   #Perform text cluster grouping of articles
   CreateTopicModel <- reactive({
-
+    
     #Get document details
     details <- FilterDetail()
     
@@ -1828,377 +1833,377 @@ if(length(details$keywords) == nrow(nodeData)){
     
     #If the generate model button is pressed, create a new topic model
     if(input$gentopicmodelbutton > 0){
-    #if(is.null(LoadModel()[["TopicModelLoad"]]) | (input$database != "Load Model")){
-    
+      #if(is.null(LoadModel()[["TopicModelLoad"]]) | (input$database != "Load Model")){
+      
       #Isolate internal code to prevent updates where the button has not been pressed
       isolate({
-      
-    #Process abstract text to stm text object. Includes control objects, including number removal, punctuation removal, lowercase, and stemming
-    #metadata should have unique document ID that is used in other charts as first column
-    meta <- data.frame(details$PMID, details$year)
-    colnames(meta) <- c("PMID", "year")
-    
-    
-    #Aggressively strip the article text, removing all non-letter items due to bugs in stm and tm (based on likely bug in removePunctuation function in tm package) not properly removing punctuation for trademark symbol anymore
-    details$abstractonlyletters <- lapply(details$abstract, function(x) gsub("[^a-zA-Z ]"," ", x))
-    
-    #disable database polling search buttons using shinyjs before intense computation steps below
-    disable("summary_search")
-    disable("detailed_search")
-    disable("link_search")
-    
-    
-    #####################################################
-#     temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
-#     
-#     #Process abstract details into format for stm document preparation
-#     meta<-temp$meta
-#     vocab<-temp$vocab
-#     docs<-temp$documents
-#     
-#     #Prep document for stm modeling. Removes infrequent and too frequent terms and sparse documents
-#     out <- prepDocuments(docs, vocab, meta)
-#     docs<-out$documents
-#     vocab<-out$vocab
-#     meta <-out$meta
-#     
-#     #Create vector of document numbers that were not removed during text processing:
-#     usedocs <- as.integer(names(docs))
-#     
-#     #Alternate loop to implement variable length phrases using ToPMine
-#     library(tm)
-#     
-#     #Strip carriage return characters and replace with end of sentence. Write file to directory containing ToPMine
-#     writeLines(gsub("\n", ". ", details$abstract[usedocs]), "C:/PDFtoText/ToPMine/topicalPhrases/rawFiles/mod.txt")
-#     
-#     currentwd <- getwd()
-#     
-#     setwd("C:/PDFtoText/ToPMine/topicalPhrases/")
-#     system("C:/PDFtoText/ToPMine/topicalPhrases/win_run.bat", wait = TRUE)
-#     
-#     setwd(currentwd)
-#     
-#     multiword <- ToPMinetoDTM("C:/PDFtoText/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt")
-#     
-#     multiword <- readCorpus(multiword, type = "dtm")
-#     docs <- multiword$documents
-#     vocab <- multiword$vocab
-#     
-#     #Set working directory to C: temp to ensure write permission is allowed for init.type "Spectral" in stm function below
-#     setwd("C:/temp")
-    
-#Look for TopMine in installation directory for JournalVis and make sure multiword use is selected
-    
-     
-if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) & (input$usemultiword == "Yes")){
-  
-  currentwd <- getwd()
-  
-    #Create subfolder to write raw data to for ToPMine if it does not exist
-    if (file.exists(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/"))){
-    } else {
-      dir.create(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")))
-      
-    }
-    
-    #Write raw text for ToPMine phrase identification
-    #writeLines(gsub("\n", ". ", details$abstract), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
-    #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
-    writeLines(gsub("\n", ". ", details$abstractonlyletters), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
-    
-    #Run ToPMine phrase identification
-    setwd(paste0(currentwd,"/ToPMine/topicalPhrases/"))
-    system(paste0(currentwd,"/ToPMine/topicalPhrases/win_run.bat"), wait = TRUE)
-    
-    
-    ##Read ToPMine files back into R - OLD method to get entire corpus
-    #multiword <- ToPMinetoDTM(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
-    #multiword <- readCorpus(multiword, type = "dtm")
-    ##Identify all multi-word phrases identified by TopMine and sort by number of characters (large to small) and create dataframe with replacement token
-    #phrases <- multiword$vocab[grep(" ", multiword$vocab, fixed = TRUE)]
-    
-    #Extract only multiword phrases produced by topmine
-    phrases = ToPMineExtractMultiword(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
-    
-    #Delete temporary directories used by ToPMine
-    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")), recursive = TRUE)
-    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset/")), recursive = TRUE)
-    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/")), recursive = TRUE)
-    
-    #Set directory back to JournalVis working directory
-    setwd(currentwd)
-    
-    #Sort phrases from largest to smallest
-    phrases <- phrases[order(nchar(phrases), decreasing = TRUE)]
-    
-    # # ##Moved to TM specific use below
-    # #Define null vector to start in case no phrases identified
-    # placeholder <- c()
-    # 
-    # if(length(phrases) > 0){
-    # 
-    # placeholder <-  apply(expand.grid(lapply(1:max(2,ceiling(log(length(phrases), base = 26))), function(i) letters))[1:length(phrases),], MARGIN = 1, paste0, collapse = "")
-    # placeholder <- paste0("phrasefindqqxzqcvx", placeholder,"phrasefind")
-    # 
-    # }
-    # 
-    # #Replace multiword phrase instances. Add leading and trailing space to make sure they don't get combined with other words
-    # #multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstract, ignore.case = TRUE, leadspace = TRUE, trailspace = TRUE)
-    # multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstractonlyletters, leadspace = TRUE, trailspace = TRUE)
-    # 
-    # ##Moved to TM specific use below
-    # #Get integer position of remaining non-zero length documents
-    # usedocs <- which(nchar(multdef) > 0)
-    # 
-    # #Process resultant text in preparation for STM/LDA modeling
-    # temp <- textProcessor(documents = multdef[usedocs], metadata = meta[usedocs,],  stem = FALSE)
-    
-
-}else{
-  
-  ##Moved to TM specific use section below
-  # #If TopMine is not installed, process corpus as single word tokens:
-  # 
-  # #Get integer position of remaining non-zero length documents
-  # usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
-  # 
-  # #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
-  # #temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
-  # #Process resultant text in preparation for STM/LDA modeling
-  # temp <- textProcessor(documents = details$abstractonlyletters[usedocs], metadata = meta[usedocs,],  stem = FALSE)
-}
-    
-    #Determine if older tm package or quanteda package should be used for preprocessing.
-    #Note: tm package use soon to be deprecated since it is inferior
-    if(usequanteda){
-      #Use quanteda package processing (doesn't support multiword tokens yet)
-      #MIGHT NOT BE NECESSARY USING QUANTEDA. Get integer position of remaining non-zero length documents
-      #usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
-      
-      #########################################################
-      #Quanteda prototype section
-      
-      #Create corpus
-      quantcorp = corpus(as.character(details$abstract), docnames = c(1:length(details$abstract)), docvars = meta)
-      
-      #If multi-word phrases exist, tokenize using them
-      if(exists("phrases")){
         
-        #Tokenize without removing anything to allow for multiword phrase finding
-        quanttok = tokens(x = quantcorp)
-        
-        #Convert multi-word tokens to underscore joined tokens
-        #NOTE: Investigate ways to up since this is fairly slow (takes approx 30 minutes on SOP dataset, but still faster than older way shown below in tm specific implementation)
-        quanttok = tokens_compound(quanttok, pattern = phrase(as.character(phrases)))
-        
-        #Remove extraneous items from tokens
-        quanttok = tokens(x = quanttok,
-                          remove_numbers = TRUE,
-                          remove_punct = TRUE,
-                          remove_symbols = TRUE,
-                          remove_separators = TRUE)
+        #Process abstract text to stm text object. Includes control objects, including number removal, punctuation removal, lowercase, and stemming
+        #metadata should have unique document ID that is used in other charts as first column
+        meta <- data.frame(details$PMID, details$year)
+        colnames(meta) <- c("PMID", "year")
         
         
-      }else{
-      
-      #Tokenize while removing many items without multiword phrases
-      quanttok = tokens(x = quantcorp,
-                        remove_numbers = TRUE,
-                        remove_punct = TRUE,
-                        remove_symbols = TRUE,
-                        remove_separators = TRUE)
-      }
-      
-      #Remove stopwords
-      quanttok = tokens_remove(quanttok, stopwords())
-      
-      #Remove tokens that are less than 3 characters
-      quanttok = tokens_remove(quanttok, min_nchar = 3, max_nchar = 100000)
-      
-      ##Define token equivalence (define synonyms). need to do more research on how to use
-      #tokens_lookup(...)
-      
-      #Create dfm (much quicker with tokens vs. corpus)
-      quantdfm = dfm(quanttok, tolower = TRUE, stem = FALSE)
-      
-      #Trim out too frequent or too infrequent words based on proportion of documents they appear in
-      quantdfm = dfm_trim(quantdfm, min_docfreq = input$stmtermminpercent/100, max_docfreq = input$stmtermmaxpercent/100, docfreq_type = "prop")
-      
-      #Convert to stm format
-      out = convert(quantdfm, to = "stm")
-      
-      #Extract docs, vocab, and meta for stm creation
-      docs<-out$documents
-      vocab<-out$vocab
-      meta <-out$meta
-      #Revert multiword underscore splits in vocab back to spaces
-      vocab = gsub(pattern = "_", replacement = " ", x = vocab, fixed = TRUE)
-      
-      #Reduce usedocs vector to abstract indices of document numbers that were not removed during text processing or that were not removed due to being zero length documents:
-      #Document numbers not removed by textProcessor
-      usedocs <- as.integer(names(docs))
-      
-      #Build stm model
-      #abstractstm = stm(documents = stmdfm$documents, vocab = stmdfm$vocab, K = ceiling(sqrt(length(stmdfm$documents))))
-      
-      
-      #Find multi-word tokens (quite slow, topminer better)
-      #textstat_collocations(quanttok)
-      
-    }else{
-      #Use tm package processing
-      
-      #Initialize tm textprocessor using multiword tokens if they exist
-      if(exists("phrases")){
+        #Aggressively strip the article text, removing all non-letter items due to bugs in stm and tm (based on likely bug in removePunctuation function in tm package) not properly removing punctuation for trademark symbol anymore
+        details$abstractonlyletters <- lapply(details$abstract, function(x) gsub("[^a-zA-Z ]"," ", x))
         
-        #Define null vector to start in case no phrases identified
-        placeholder <- c()
+        #disable database polling search buttons using shinyjs before intense computation steps below
+        disable("summary_search")
+        disable("detailed_search")
+        disable("link_search")
         
-        if(length(phrases) > 0){
+        
+        #####################################################
+        #     temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
+        #     
+        #     #Process abstract details into format for stm document preparation
+        #     meta<-temp$meta
+        #     vocab<-temp$vocab
+        #     docs<-temp$documents
+        #     
+        #     #Prep document for stm modeling. Removes infrequent and too frequent terms and sparse documents
+        #     out <- prepDocuments(docs, vocab, meta)
+        #     docs<-out$documents
+        #     vocab<-out$vocab
+        #     meta <-out$meta
+        #     
+        #     #Create vector of document numbers that were not removed during text processing:
+        #     usedocs <- as.integer(names(docs))
+        #     
+        #     #Alternate loop to implement variable length phrases using ToPMine
+        #     library(tm)
+        #     
+        #     #Strip carriage return characters and replace with end of sentence. Write file to directory containing ToPMine
+        #     writeLines(gsub("\n", ". ", details$abstract[usedocs]), "C:/PDFtoText/ToPMine/topicalPhrases/rawFiles/mod.txt")
+        #     
+        #     currentwd <- getwd()
+        #     
+        #     setwd("C:/PDFtoText/ToPMine/topicalPhrases/")
+        #     system("C:/PDFtoText/ToPMine/topicalPhrases/win_run.bat", wait = TRUE)
+        #     
+        #     setwd(currentwd)
+        #     
+        #     multiword <- ToPMinetoDTM("C:/PDFtoText/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt")
+        #     
+        #     multiword <- readCorpus(multiword, type = "dtm")
+        #     docs <- multiword$documents
+        #     vocab <- multiword$vocab
+        #     
+        #     #Set working directory to C: temp to ensure write permission is allowed for init.type "Spectral" in stm function below
+        #     setwd("C:/temp")
+        
+        #Look for TopMine in installation directory for JournalVis and make sure multiword use is selected
+        
+        
+        if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) & (input$usemultiword == "Yes")){
           
-          placeholder <-  apply(expand.grid(lapply(1:max(2,ceiling(log(length(phrases), base = 26))), function(i) letters))[1:length(phrases),], MARGIN = 1, paste0, collapse = "")
-          placeholder <- paste0("phrasefindqqxzqcvx", placeholder,"phrasefind")
+          currentwd <- getwd()
+          
+          #Create subfolder to write raw data to for ToPMine if it does not exist
+          if (file.exists(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/"))){
+          } else {
+            dir.create(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")))
+            
+          }
+          
+          #Write raw text for ToPMine phrase identification
+          #writeLines(gsub("\n", ". ", details$abstract), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
+          #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
+          writeLines(gsub("\n", ". ", details$abstractonlyletters), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
+          
+          #Run ToPMine phrase identification
+          setwd(paste0(currentwd,"/ToPMine/topicalPhrases/"))
+          system(paste0(currentwd,"/ToPMine/topicalPhrases/win_run.bat"), wait = TRUE)
+          
+          
+          ##Read ToPMine files back into R - OLD method to get entire corpus
+          #multiword <- ToPMinetoDTM(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
+          #multiword <- readCorpus(multiword, type = "dtm")
+          ##Identify all multi-word phrases identified by TopMine and sort by number of characters (large to small) and create dataframe with replacement token
+          #phrases <- multiword$vocab[grep(" ", multiword$vocab, fixed = TRUE)]
+          
+          #Extract only multiword phrases produced by topmine
+          phrases = ToPMineExtractMultiword(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
+          
+          #Delete temporary directories used by ToPMine
+          unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")), recursive = TRUE)
+          unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset/")), recursive = TRUE)
+          unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/")), recursive = TRUE)
+          
+          #Set directory back to JournalVis working directory
+          setwd(currentwd)
+          
+          #Sort phrases from largest to smallest
+          phrases <- phrases[order(nchar(phrases), decreasing = TRUE)]
+          
+          # # ##Moved to TM specific use below
+          # #Define null vector to start in case no phrases identified
+          # placeholder <- c()
+          # 
+          # if(length(phrases) > 0){
+          # 
+          # placeholder <-  apply(expand.grid(lapply(1:max(2,ceiling(log(length(phrases), base = 26))), function(i) letters))[1:length(phrases),], MARGIN = 1, paste0, collapse = "")
+          # placeholder <- paste0("phrasefindqqxzqcvx", placeholder,"phrasefind")
+          # 
+          # }
+          # 
+          # #Replace multiword phrase instances. Add leading and trailing space to make sure they don't get combined with other words
+          # #multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstract, ignore.case = TRUE, leadspace = TRUE, trailspace = TRUE)
+          # multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstractonlyletters, leadspace = TRUE, trailspace = TRUE)
+          # 
+          # ##Moved to TM specific use below
+          # #Get integer position of remaining non-zero length documents
+          # usedocs <- which(nchar(multdef) > 0)
+          # 
+          # #Process resultant text in preparation for STM/LDA modeling
+          # temp <- textProcessor(documents = multdef[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+          
+          
+        }else{
+          
+          ##Moved to TM specific use section below
+          # #If TopMine is not installed, process corpus as single word tokens:
+          # 
+          # #Get integer position of remaining non-zero length documents
+          # usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
+          # 
+          # #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
+          # #temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
+          # #Process resultant text in preparation for STM/LDA modeling
+          # temp <- textProcessor(documents = details$abstractonlyletters[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+        }
+        
+        #Determine if older tm package or quanteda package should be used for preprocessing.
+        #Note: tm package use soon to be deprecated since it is inferior
+        if(usequanteda){
+          #Use quanteda package processing (doesn't support multiword tokens yet)
+          #MIGHT NOT BE NECESSARY USING QUANTEDA. Get integer position of remaining non-zero length documents
+          #usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
+          
+          #########################################################
+          #Quanteda prototype section
+          
+          #Create corpus
+          quantcorp = corpus(as.character(details$abstract), docnames = c(1:length(details$abstract)), docvars = meta)
+          
+          #If multi-word phrases exist, tokenize using them
+          if(exists("phrases")){
+            
+            #Tokenize without removing anything to allow for multiword phrase finding
+            quanttok = tokens(x = quantcorp)
+            
+            #Convert multi-word tokens to underscore joined tokens
+            #NOTE: Investigate ways to up since this is fairly slow (takes approx 30 minutes on SOP dataset, but still faster than older way shown below in tm specific implementation)
+            quanttok = tokens_compound(quanttok, pattern = phrase(as.character(phrases)))
+            
+            #Remove extraneous items from tokens
+            quanttok = tokens(x = quanttok,
+                              remove_numbers = TRUE,
+                              remove_punct = TRUE,
+                              remove_symbols = TRUE,
+                              remove_separators = TRUE)
+            
+            
+          }else{
+            
+            #Tokenize while removing many items without multiword phrases
+            quanttok = tokens(x = quantcorp,
+                              remove_numbers = TRUE,
+                              remove_punct = TRUE,
+                              remove_symbols = TRUE,
+                              remove_separators = TRUE)
+          }
+          
+          #Remove stopwords
+          quanttok = tokens_remove(quanttok, stopwords())
+          
+          #Remove tokens that are less than 3 characters
+          quanttok = tokens_remove(quanttok, min_nchar = 3, max_nchar = 100000)
+          
+          ##Define token equivalence (define synonyms). need to do more research on how to use
+          #tokens_lookup(...)
+          
+          #Create dfm (much quicker with tokens vs. corpus)
+          quantdfm = dfm(quanttok, tolower = TRUE, stem = FALSE)
+          
+          #Trim out too frequent or too infrequent words based on proportion of documents they appear in
+          quantdfm = dfm_trim(quantdfm, min_docfreq = input$stmtermminpercent/100, max_docfreq = input$stmtermmaxpercent/100, docfreq_type = "prop")
+          
+          #Convert to stm format
+          out = convert(quantdfm, to = "stm")
+          
+          #Extract docs, vocab, and meta for stm creation
+          docs<-out$documents
+          vocab<-out$vocab
+          meta <-out$meta
+          #Revert multiword underscore splits in vocab back to spaces
+          vocab = gsub(pattern = "_", replacement = " ", x = vocab, fixed = TRUE)
+          
+          #Reduce usedocs vector to abstract indices of document numbers that were not removed during text processing or that were not removed due to being zero length documents:
+          #Document numbers not removed by textProcessor
+          usedocs <- as.integer(names(docs))
+          
+          #Build stm model
+          #abstractstm = stm(documents = stmdfm$documents, vocab = stmdfm$vocab, K = ceiling(sqrt(length(stmdfm$documents))))
+          
+          
+          #Find multi-word tokens (quite slow, topminer better)
+          #textstat_collocations(quanttok)
+          
+        }else{
+          #Use tm package processing
+          
+          #Initialize tm textprocessor using multiword tokens if they exist
+          if(exists("phrases")){
+            
+            #Define null vector to start in case no phrases identified
+            placeholder <- c()
+            
+            if(length(phrases) > 0){
+              
+              placeholder <-  apply(expand.grid(lapply(1:max(2,ceiling(log(length(phrases), base = 26))), function(i) letters))[1:length(phrases),], MARGIN = 1, paste0, collapse = "")
+              placeholder <- paste0("phrasefindqqxzqcvx", placeholder,"phrasefind")
+              
+            }
+            
+            #Replace multiword phrase instances. Add leading and trailing space to make sure they don't get combined with other words
+            #multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstract, ignore.case = TRUE, leadspace = TRUE, trailspace = TRUE)
+            multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstractonlyletters, leadspace = TRUE, trailspace = TRUE)
+            
+            #Get integer position of remaining non-zero length documents
+            usedocs <- which(nchar(multdef) > 0)
+            
+            #Process resultant text in preparation for STM/LDA modeling
+            temp <- textProcessor(documents = multdef[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+            
+            
+            
+          }else{
+            #If multiword tokens do not exist, use standard text processor
+            #Get integer position of remaining non-zero length documents
+            usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
+            
+            #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
+            #temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
+            #Process resultant text in preparation for STM/LDA modeling
+            temp <- textProcessor(documents = details$abstractonlyletters[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+            
+          }
+          
+          #Proceed with remaining document prep for stm modeling
+          #Process abstract details into format for stm document preparation
+          meta<-temp$meta
+          vocab<-temp$vocab
+          docs<-temp$documents
+          
+          #Prep document for stm modeling. Removes infrequent and too frequent terms and sparse documents
+          out <- prepDocuments(docs, vocab, meta,
+                               lower.thresh = ceiling(input$stmtermminpercent*length(docs)/100),
+                               upper.thresh = ceiling(input$stmtermmaxpercent*length(docs)/100))
+          docs<-out$documents
+          vocab<-out$vocab
+          meta <-out$meta
+          
+          #Reduce usedocs vector to abstract indices of document numbers that were not removed during text processing or that were not removed due to being zero length documents:
+          #Document numbers not removed by textProcessor
+          usedocs <- usedocs[as.integer(names(docs))]
+          
+          
+          if(!usequanteda){
+            #tm package multi-word reversion. Need version for quanteda
+            #Revert multi-word placeholders back to original multi-word phrases if TopMine process was successful
+            if(exists("multdef")){
+              
+              vocab <- mgsub(as.character(placeholder), as.character(phrases), vocab)
+              
+            }
+          }
+          
           
         }
         
-        #Replace multiword phrase instances. Add leading and trailing space to make sure they don't get combined with other words
-        #multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstract, ignore.case = TRUE, leadspace = TRUE, trailspace = TRUE)
-        multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstractonlyletters, leadspace = TRUE, trailspace = TRUE)
+        #Calculate topics. Use "Spectral" initialization to allow for automatic topic number selection if number of words is less than 10000, otherwise use LDA initialization
         
-        #Get integer position of remaining non-zero length documents
-        usedocs <- which(nchar(multdef) > 0)
+        #Set working directory to C: temp to ensure write permission is allowed for init.type "Spectral" in stm function below
+        currentwd <- getwd()
+        setwd("C:/temp")
         
-        #Process resultant text in preparation for STM/LDA modeling
-        temp <- textProcessor(documents = multdef[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+        #Model topics including document year as factor if there are more than 1 years present
+        if(length(unique(meta$year)) > 1){
+          abstractstm <- stm(docs, vocab, K = ceiling(sqrt(length(docs))), init.type = "Spectral", data=meta, prevalence = ~year)
+        }else{
+          abstractstm <- stm(docs, vocab, K = ceiling(sqrt(length(docs))), init.type = "Spectral", data=meta)
+        }
         
         
+        #Return working directory back to original setting
+        setwd(currentwd)
         
-      }else{
-        #If multiword tokens do not exist, use standard text processor
-        #Get integer position of remaining non-zero length documents
-        usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
+        #Create topic JSON array for LDAvis visualization:
         
-        #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
-        #temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
-        #Process resultant text in preparation for STM/LDA modeling
-        temp <- textProcessor(documents = details$abstractonlyletters[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+        topicPCAJSON <- TopicStmPCAJSON(abstractstm, docs = docs)
         
-      }
+        #Create matrix of topic proportion by document sorted from most frequently represented topic to least frequently
+        #Row name is document ID
+        #Column name is topic ID
+        
+        doctopic <- abstractstm$theta
+        rownames(doctopic) <- as.character(meta[,1])
+        colnames(doctopic) <- paste("Topic", seq(1:ncol(doctopic)))
+        #doctopic <- doctopic[,order(colSums(doctopic), decreasing = TRUE)]
+        
+        #toLDAvis(abstractstm, docs = docs)
+        
+        #Generate simple force directed graph of topic relationships
+        #topiccorrelate <- topicCorr(abstractstm, method = "huge")
+        #look at plot.topicCorr method to see how to get edges from the topicCorr output
+        
+        #Create graph using LDAvis PCA layout with topiccorrelate edges for connections
+        #Implement LDAvis keyword highlights and add FREX and Lift keywords as tooltips
+        #On click, highlight article graph with color spectrum from saturated to empty depending on how closely each article is associated with the topic
+        
+        #Code to get article polarity
+        
+        if(input$usesentenceanalysis == "Yes"){
+          #browser()
+          #Note, still buggy where if there are no multiword tokens (tokens with spaces) or numbers in corpus, will crash
+          polartopics <- ArticleTopicPolar(stmmod = abstractstm, articlelist = details$abstract[usedocs], usestem = FALSE)
+          
+        }else{polartopics <- list()}
+        
+        
+        #   #Temp code to get thoughts (articles) for specific topic
+        #   findThoughts(abstractstm, texts = details$abstract[as.numeric(names(temp$documents))], topic = x)
+        #   
+        #   #Temp code to get topic keywords
+        #   labelTopics(abstractstm, topics = x)
+        
+        #enable database polling search buttons
+        enable("summary_search")
+        enable("detailed_search")
+        enable("link_search")
+        
+      })
       
-      #Proceed with remaining document prep for stm modeling
-      #Process abstract details into format for stm document preparation
-      meta<-temp$meta
-      vocab<-temp$vocab
-      docs<-temp$documents
-      
-      #Prep document for stm modeling. Removes infrequent and too frequent terms and sparse documents
-      out <- prepDocuments(docs, vocab, meta,
-                           lower.thresh = ceiling(input$stmtermminpercent*length(docs)/100),
-                           upper.thresh = ceiling(input$stmtermmaxpercent*length(docs)/100))
-      docs<-out$documents
-      vocab<-out$vocab
-      meta <-out$meta
-      
-      #Reduce usedocs vector to abstract indices of document numbers that were not removed during text processing or that were not removed due to being zero length documents:
-      #Document numbers not removed by textProcessor
-      usedocs <- usedocs[as.integer(names(docs))]
-      
-      
-      if(!usequanteda){
-      #tm package multi-word reversion. Need version for quanteda
-      #Revert multi-word placeholders back to original multi-word phrases if TopMine process was successful
-      if(exists("multdef")){
-        
-        vocab <- mgsub(as.character(placeholder), as.character(phrases), vocab)
-        
-      }
-      }
-      
-      
-    }
-    
-    #Calculate topics. Use "Spectral" initialization to allow for automatic topic number selection if number of words is less than 10000, otherwise use LDA initialization
-    
-    #Set working directory to C: temp to ensure write permission is allowed for init.type "Spectral" in stm function below
-    currentwd <- getwd()
-    setwd("C:/temp")
-    
-    #Model topics including document year as factor if there are more than 1 years present
-    if(length(unique(meta$year)) > 1){
-      abstractstm <- stm(docs, vocab, K = ceiling(sqrt(length(docs))), init.type = "Spectral", data=meta, prevalence = ~year)
-      }else{
-        abstractstm <- stm(docs, vocab, K = ceiling(sqrt(length(docs))), init.type = "Spectral", data=meta)
-      }
-    
-    
-    #Return working directory back to original setting
-    setwd(currentwd)
-    
-    #Create topic JSON array for LDAvis visualization:
-    
-    topicPCAJSON <- TopicStmPCAJSON(abstractstm, docs = docs)
-    
-    #Create matrix of topic proportion by document sorted from most frequently represented topic to least frequently
-    #Row name is document ID
-    #Column name is topic ID
-    
-    doctopic <- abstractstm$theta
-    rownames(doctopic) <- as.character(meta[,1])
-    colnames(doctopic) <- paste("Topic", seq(1:ncol(doctopic)))
-    #doctopic <- doctopic[,order(colSums(doctopic), decreasing = TRUE)]
-    
-    #toLDAvis(abstractstm, docs = docs)
-
-    #Generate simple force directed graph of topic relationships
-    #topiccorrelate <- topicCorr(abstractstm, method = "huge")
-    #look at plot.topicCorr method to see how to get edges from the topicCorr output
-    
-    #Create graph using LDAvis PCA layout with topiccorrelate edges for connections
-    #Implement LDAvis keyword highlights and add FREX and Lift keywords as tooltips
-    #On click, highlight article graph with color spectrum from saturated to empty depending on how closely each article is associated with the topic
-    
-    #Code to get article polarity
-    
-    if(input$usesentenceanalysis == "Yes"){
-      #browser()
-      #Note, still buggy where if there are no multiword tokens (tokens with spaces) or numbers in corpus, will crash
-      polartopics <- ArticleTopicPolar(stmmod = abstractstm, articlelist = details$abstract[usedocs], usestem = FALSE)
-      
-    }else{polartopics <- list()}
-    
-    
-    #   #Temp code to get thoughts (articles) for specific topic
-    #   findThoughts(abstractstm, texts = details$abstract[as.numeric(names(temp$documents))], topic = x)
-    #   
-    #   #Temp code to get topic keywords
-    #   labelTopics(abstractstm, topics = x)
-    
-    #enable database polling search buttons
-    enable("summary_search")
-    enable("detailed_search")
-    enable("link_search")
-    
-    })
-    
     }
     
     #If a model has been loaded, use the loaded model unless the generate model button has been pressed
     if((input$gentopicmodelbutton == 0) & (!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
-    #if((!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
+      #if((!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
       
       #Isolate internal code to prevent updates where the button has not been pressed
       isolate({
-      
-      #Get loaded data
-      loaddat = LoadModel()
-      
-      #Extract correct elements for output of reactive value
-      abstractstm = loaddat$TopicModelLoad$TopicModel
-      topicPCAJSON = loaddat$TopicModelLoad$TopicPCAJSON
-      meta = loaddat$TopicModelLoad$Metadata
-      doctopic = loaddat$TopicModelLoad$TopicProb
-      polartopics = loaddat$TopicModelLoad$SentenceTopics
-    
+        
+        #Get loaded data
+        loaddat = LoadModel()
+        
+        #Extract correct elements for output of reactive value
+        abstractstm = loaddat$TopicModelLoad$TopicModel
+        topicPCAJSON = loaddat$TopicModelLoad$TopicPCAJSON
+        meta = loaddat$TopicModelLoad$Metadata
+        doctopic = loaddat$TopicModelLoad$TopicProb
+        polartopics = loaddat$TopicModelLoad$SentenceTopics
+        
       })
     }
     
@@ -2323,7 +2328,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
         quanttok = tokens_compound(quanttok, pattern = phrase(as.character(phrases)))
         
       }
-        
+      
       #Tokenize while removing several undesirable items
       quanttok = tokens(x = quanttok,
                         remove_numbers = TRUE,
@@ -2457,7 +2462,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     return(list("SemanticTopics" = topicvec, "DocumentMatchRank" = closedocs, "DocumentCosDistance" = distperc))
     
   })
-
+  
   #Keyword/phrase search to find documents that match keyword(s)/keyphrase(s) provided in keyword search
   KeywordSearch <- reactive({
     
@@ -2481,7 +2486,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       
     }
     
-
+    
     
     return(list("QueryText" = input$keyword_search,
                 "TopicMatchProbability" = topicprobs$TopicMatchProbability,
@@ -2526,21 +2531,21 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       })
     }
   })
-    
+  
   # NOTE: Reactive variables used as functions networkReactive()
-#   networkReactive <- reactive({
-#     if(is.null(input$connectedNodes)) {
-#       return(network)
-#     } else {
-#       t1 <- which(network$source %in% input$connectedNodes)
-#       t2 <- which(network$target %in% input$connectedNodes)
-#       idx <- unique(c(t1, t2))
-#       return(network[idx,])
-#     }
-#   })
+  #   networkReactive <- reactive({
+  #     if(is.null(input$connectedNodes)) {
+  #       return(network)
+  #     } else {
+  #       t1 <- which(network$source %in% input$connectedNodes)
+  #       t2 <- which(network$target %in% input$connectedNodes)
+  #       idx <- unique(c(t1, t2))
+  #       return(network[idx,])
+  #     }
+  #   })
   
   #Return summary search text
-    output$summary_search_results<-renderText({
+  output$summary_search_results<-renderText({
     if(is.null(DBSwitch()[["Summary"]])){
       
       textout <- NULL
@@ -2552,7 +2557,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     }
     return(textout)
   })
-    
+  
   output$link_search_results<-renderText({
     if(is.null(DBSwitch()[["NodeEdge"]])){
       textout <- NULL
@@ -2561,66 +2566,66 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     }
     return(textout)
   })
-
-output$detailed_search_results<-renderText({
-  if(is.null(FilterDetail())){
-    textout <- "Detailed Search Not Yet Performed"
-  }else{
-    textout <- "Detailed Search Completed"
-  }
-  return(textout)
-})
-
-#Code to download article list
-output$ArticleSave<-downloadHandler(
-  filename = function(){paste(input$ArticleSaveName,".csv",sep = "")},
-  content = function(file){
-    saved_articles<- CreateNetwork()[["nodeData"]]
-    
-    #Add topic model topic data if a model was created
-    if(!is.null(CreateTopicModel()[["TopicProb"]])){
-      
-      topicprob <- CreateTopicModel()[["TopicProb"]]
-      
-      saved_articles <- merge(x = saved_articles, y = data.frame(id = rownames(topicprob), topicprob),
-                               by.x = "id", by.y = "id", all.x = TRUE)
-      
+  
+  output$detailed_search_results<-renderText({
+    if(is.null(FilterDetail())){
+      textout <- "Detailed Search Not Yet Performed"
+    }else{
+      textout <- "Detailed Search Completed"
     }
-    
-    #saved_api <- reactiveValuesToList(tmp)
-    write.csv(saved_articles, file = file)
+    return(textout)
   })
-
-#Code to save finalized topic model and imported data
-output$ModelSave<-downloadHandler(
-  filename = function(){paste(input$model_filename,".RData",sep = "")},
-  content = function(file){
-    
-    #Get DBSwitch Content
-    DBSwitchReact = DBSwitch()
-    
-    #Get topic model
-    TopicReact = CreateTopicModel()
-    
-    #Put into list
-    savedmodel = list(DBSwitchReact = DBSwitchReact,TopicReact = TopicReact)
-    
-    #Save contents
-    save(savedmodel, file = file)
-  })
-
-##TODO## Finish this data table once highlighting code in javascript is good.
-#   output$nodeDataTable <- DT::renderDataTable({
-#     
-#     
-#     tmp <- CreateNetwork()[["nodeData"]][which(CreateNetwork()[["nodeData"]][["id"]] == input$clickedNode),]
-#     DT::datatable(tmp, filter='bottom', style='bootstrap', options=list(pageLength=5))
-#   })
-
-#Remove edge data network for now. Can add back in using example below later but will need to change networkReactive() to data source
-#   output$edgeDataTable <- DT::renderDataTable({
-#     DT::datatable(networkReactive(), filter='bottom', style='bootstrap', options=list(pageLength=5))
-#   })
+  
+  #Code to download article list
+  output$ArticleSave<-downloadHandler(
+    filename = function(){paste(input$ArticleSaveName,".csv",sep = "")},
+    content = function(file){
+      saved_articles<- CreateNetwork()[["nodeData"]]
+      
+      #Add topic model topic data if a model was created
+      if(!is.null(CreateTopicModel()[["TopicProb"]])){
+        
+        topicprob <- CreateTopicModel()[["TopicProb"]]
+        
+        saved_articles <- merge(x = saved_articles, y = data.frame(id = rownames(topicprob), topicprob),
+                                by.x = "id", by.y = "id", all.x = TRUE)
+        
+      }
+      
+      #saved_api <- reactiveValuesToList(tmp)
+      write.csv(saved_articles, file = file)
+    })
+  
+  #Code to save finalized topic model and imported data
+  output$ModelSave<-downloadHandler(
+    filename = function(){paste(input$model_filename,".RData",sep = "")},
+    content = function(file){
+      
+      #Get DBSwitch Content
+      DBSwitchReact = DBSwitch()
+      
+      #Get topic model
+      TopicReact = CreateTopicModel()
+      
+      #Put into list
+      savedmodel = list(DBSwitchReact = DBSwitchReact,TopicReact = TopicReact)
+      
+      #Save contents
+      save(savedmodel, file = file)
+    })
+  
+  ##TODO## Finish this data table once highlighting code in javascript is good.
+  #   output$nodeDataTable <- DT::renderDataTable({
+  #     
+  #     
+  #     tmp <- CreateNetwork()[["nodeData"]][which(CreateNetwork()[["nodeData"]][["id"]] == input$clickedNode),]
+  #     DT::datatable(tmp, filter='bottom', style='bootstrap', options=list(pageLength=5))
+  #   })
+  
+  #Remove edge data network for now. Can add back in using example below later but will need to change networkReactive() to data source
+  #   output$edgeDataTable <- DT::renderDataTable({
+  #     DT::datatable(networkReactive(), filter='bottom', style='bootstrap', options=list(pageLength=5))
+  #   })
   
   output$clickedNode = renderPrint({
     
@@ -2628,15 +2633,15 @@ output$ModelSave<-downloadHandler(
     
     return(tmp)
   })
-
-#Code to select all connected nodes. Can reactivate later if desired
+  
+  #Code to select all connected nodes. Can reactivate later if desired
   output$connectedNodes = renderPrint({
     
     FilterDetail()[["title"]][which(FilterDetail()[["PMID"]] == input$connectedNodes)]
     
   })
   
-#Plot article network
+  #Plot article network
   output$plot <- renderRcytoscapejs({
     
     if(input$gennetgraph == "Yes"){
@@ -2677,672 +2682,659 @@ output$ModelSave<-downloadHandler(
     else{NULL}
     
   })
-
-#Plot article type bar graph
-output$articletypebar <- renderChart({
   
-  #Get data for histogram
-  histdata <- CreateNetwork()[["articletypefreq"]]
-  
-  #Convert into series list for java plotting with rCharts
-  displaynum <- min(nrow(histdata), 50)
-  seriesplot <- list()
-  for (i in 1:min(nrow(histdata), displaynum)){
-    seriesplot[[i]] <- list("y" = histdata$count[[i]], "color" = histdata$color[[i]])
-  }
-  
-  #Create the plot with options
-  thegraph <- rCharts::Highcharts$new()
-  thegraph$series(data = seriesplot, type = "bar", name = "Number of Articles")
-  thegraph$xAxis(categories = histdata$name, title = list(text = ""))
-  thegraph$yAxis(title = list(text = "Number of Articles of this Type"))
-  thegraph$chart(zoomType = "x")
-  thegraph$addParams(dom = 'articletypebar')
-  thegraph$legend(enabled = F)
-  
-  thegraph$plotOptions(bar = list(stacking = "normal", 
-                              cursor = 'pointer', 
-                              point = list(events = list(click = 
-                                                           "#! function() { 
+  #Plot article type bar graph
+  output$articletypebar <- renderChart({
+    
+    #Get data for histogram
+    histdata <- CreateNetwork()[["articletypefreq"]]
+    
+    #Convert into series list for java plotting with rCharts
+    displaynum <- min(nrow(histdata), 50)
+    seriesplot <- list()
+    for (i in 1:min(nrow(histdata), displaynum)){
+      seriesplot[[i]] <- list("y" = histdata$count[[i]], "color" = histdata$color[[i]])
+    }
+    
+    #Create the plot with options
+    thegraph <- rCharts::Highcharts$new()
+    thegraph$series(data = seriesplot, type = "bar", name = "Number of Articles")
+    thegraph$xAxis(categories = histdata$name, title = list(text = ""))
+    thegraph$yAxis(title = list(text = "Number of Articles of this Type"))
+    thegraph$chart(zoomType = "x")
+    thegraph$addParams(dom = 'articletypebar')
+    thegraph$legend(enabled = F)
+    
+    thegraph$plotOptions(bar = list(stacking = "normal", 
+                                    cursor = 'pointer', 
+                                    point = list(events = list(click = 
+                                                                 "#! function() { 
                                                              Shiny.onInputChange('click', {                                            
                                                              category: this.category, chart: 'articletype'
                                                            })
                                                            } !#")
-                                           )
-                              )
-                )
-  
-  return(thegraph)
-})
-
-#Plot keyword bar graph
-output$keywordbar <- renderChart({
-  
-
-  #Get data for histogram
-  histdata <- CreateNetwork()[["keywordfreq"]]
-  
-  #Convert into series list for java plotting with rCharts
-  displaynum <- min(nrow(histdata), 50)
-  seriesplot <- list()
-  for (i in 1:min(nrow(histdata), displaynum)){
-    seriesplot[[i]] <- list("y" = histdata$count[[i]], "color" = histdata$color[[i]])
-  }
-  
-  #Create the plot with options
-  thegraph <- rCharts::Highcharts$new()
-  thegraph$series(data = seriesplot, type = "bar", name = "Number of Articles")
-  thegraph$xAxis(categories = histdata$name[1:displaynum], title = list(text = ""))
-  thegraph$yAxis(title = list(text = "Number of Articles Containing Keyword"))
-  thegraph$chart(zoomType = "x")
-  thegraph$addParams(dom = 'keywordbar')
-  thegraph$legend(enabled = F)
-  
-  thegraph$plotOptions(bar = list(stacking = "normal", 
-                                  cursor = 'pointer', 
-                                  point = list(events = list(click = 
-                                                               "#! function() { 
-                                                             Shiny.onInputChange('click', {                                            
-                                                             category: this.category, chart: 'keyword'
-                                                           })
-                                                           } !#")
-                                  )
-  )
-  )
-  
-  return(thegraph)
-})
-
-#Plot Topic Trends By Year
-# output$TopicTime <- renderTaucharts({
-#   
-#   
-#   #Get data for linegraph and format for Rcharts plotting
-#   topicmodel <- CreateTopicModel()[["TopicModel"]]
-#   meta <- CreateTopicModel()[["Metadata"]]
-#   graphdat <- estimateEffect( ~ year, topicmodel, metadata = meta, uncertainty = "None")
-#   graphdat <- plot.estimateEffect(graphdat, covariate = "year", model = topicmodel, method = "continuous", xlab = "Year", printlegend = F)
-#   graphframe <- data.frame(graphdat$x, graphdat$means)
-#   colnames(graphframe) <- c("year", paste("Topic", graphdat$topics))
-#   #graphframe <- melt(graphframe, id = "year", na.rm = TRUE)
-#   
-#   #Create graph
-#   
-#   
-#   tautime <- tauchart(graphframe)
-#   thegraph <- tau_line(tautime, "year", "Topic.1")
-#   
-# #   thegraph <- Highcharts$new()
-# #   thegraph$chart(zoomType = "x")
-# #   
-# #   
-# #   #thegraph <- hPlot(value ~ year, group = "variable", data = graphframe, type = "line", title = "Topic Prevalence Over Time", radius = 6)
-# #   thegraph$yAxis(title = (list(text = "Topic Proportion")))
-# #   thegraph$addParams(dom = 'TopicTime')
-# #   
-# #   for (i in 1:length(graphdat$topics)){
-# #     
-# #     lineseries <- list()
-# #     lineseries <- javalister(data.frame(graphframe[,1], graphframe[,i+1]))
-# #     
-# #     thegraph$series(name = paste("Topic", graphdat$topics[i]), type = 'line', data = lineseries, yAxis = 0, turboThreshold = length(lineseries), marker = list(enabled = FALSE), lineWidth = 1)
-# #     
-# #   }
-#   
-#   return(thegraph)
-# })
-
-#Find topics that represent keywords in search
-output$TopicFind <- renderUI({
-  
-  # #Code moved to reactive statement so results can be shared across several outputs
-  # topicmodel <- CreateTopicModel()[["TopicModel"]]
-  # 
-  # topicprobs <- list()
-  # 
-  # if(nchar(input$keyword_search) > 0){
-  # 
-  # searchvect <- strsplit(input$keyword_search, split = " ", fixed = TRUE)
-  # 
-  # topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
-  # 
-  # if(is.null(topicprobs$TopicMatchProbability) == FALSE){
-  # 
-  # topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
-  # 
-  # }
-  # 
-  # }
-  
-  #Get topic probabilities from keyword search
-  topicprobs = KeywordSearch()
-
-  
-  return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
-               paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]), ": ", 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))],4), "%", collapse = "<br>"),
-               "<br/> Words/Phrases Not Found In Any Topics: ", paste(topicprobs$MissingWords, collapse = " "))))
-  
-})
-
-
-#Find topics that represent keywords in search
-output$TopicFindProb <- renderChart({
-  
-  # #Code moved to reactive statement so results can be shared across several outputs
-  # topicmodel <- CreateTopicModel()[["TopicModel"]]
-  # 
-  # topicprobs <- list()
-  # 
-  # if(nchar(input$keyword_search) > 0){
-  #   
-  #   searchvect <- strsplit(input$keyword_search, split = " ", fixed = TRUE)
-  #   
-  #   topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
-  #   
-  #   if(is.null(topicprobs$TopicMatchProbability) == FALSE){
-  #     
-  #     topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
-  #     
-  #   }
-  #   
-  # }
-  
-  #Get topic probabilities from keyword search
-  topicprobs = KeywordSearch()
-
-  
-  #Convert into series list for java plotting with rCharts
-  displaynum <- min(nrow(histdata), 50)
-  seriesplot <- list()
-  for (i in 1:min(nrow(histdata), displaynum)){
-    seriesplot[[i]] <- list("y" = histdata$count[[i]], "color" = histdata$color[[i]])
-  }
-  
-  #Create graph
-  thegraph <- rCharts::Highcharts$new()
-  thegraph$series(data = seriesplot, type = "column", name = "Topics")
-  thegraph$xAxis(categories = histdata$name[1:displaynum], title = list(text = ""))
-  thegraph$yAxis(title = list(text = "Number of Articles Containing Keyword"))
-  thegraph$chart(zoomType = "x")
-  thegraph$addParams(dom = 'keywordbar')
-  thegraph$legend(enabled = F)
-  
-  thegraph$plotOptions(bar = list(stacking = "normal", 
-                                  cursor = 'pointer', 
-                                  point = list(events = list(click = 
-                                                               "#! function() { 
-                                                             Shiny.onInputChange('click', {                                            
-                                                             category: this.category, chart: 'keyword'
-                                                           })
-                                                           } !#")
-                                  )
-  )
-  )
-  
-  return(thegraph)
-  
-  return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
-                    paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]),": " , 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))], 3), "%", collapse = "<br>"),
-                    "<br/> Words Not Found In Any Topics: ",
-                    paste(topicprobs$MissingWords, "hr()"))))
-  
-})
-
-
-#Find documents that match document text provided in search
-output$TopicSemMatch <- renderUI({
-
-  #Get semantic search topic match vector and document ranking
-  semsearch <- SemanticSearch()
-
-  #Sort topic vector from largest to smallest
-  topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
-
-  #Get ranked list of most likely matching documents
-  closedocs <- semsearch$DocumentMatchRank
-
-  #Get abstract list and order by closeness to new document based on topic proportions
-  details <- FilterDetail()
-  names(details$abstract) <- details$PMID
-  output <- details$abstract[as.character(closedocs)]
-
-  return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
-                    paste0(names(topicvec[1:min(5, length(topicvec))]), ": " , 100*round(topicvec[1:min(5, length(topicvec))], 3), "%", collapse = "<br>"), "<br><br>")))
-  #paste(names(topicvec[1:min(5, length(topicvec))]), topicvec[1:min(5, length(topicvec))], collapse = ", "))))
-
-})
-
-#Initialize semantic document matching table
-output$SemDocMatchTable <- DT::renderDataTable({
-  
-  #Get core table data
-  tmp = DocTableCore()[['CoreTable']]
-  
-  #Remove row names so they are not displayed
-  rownames(tmp) = NULL
-  
-  DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE,
-                options=list(pageLength=5, columnDefs = list(list(
-                  targets = 3,
-                  render = JS(
-                    "function(data, type, row, meta) {",
-                    "return type === 'display' && data.length > 1000 ?",
-                    "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
-                    "}")
-                ))))
-})
-
-#Update semantic document table with search results to find documents that match document text provided in semantic search
-# NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
-proxSemTable = dataTableProxy('SemDocMatchTable')
-observe({
-
-  #Get semantic search topic match vector and document ranking
-  semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
-
-  isolate({
+                                    )
+    )
+    )
     
-    # If something was returned by the semantic search, update the table
-    if(!is.null(semsearch)){
-    
-      #Get core static table data
-      tmp = DocTableCore()[['CoreTable']]
-      
-  #Sort topic vector from largest to smallest
-  topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
-
-  #Get ranked list of most likely matching documents
-  closedocs <- semsearch$DocumentMatchRank
-
-  #Get document match percent
-  distperc <- semsearch$DocumentCosDistance
-
-  #Get abstract list and order by closeness to new document based on topic proportions
-  #details <- FilterDetail()
-
-  #Rank items by matching result of distance calculations to document ID in row name
-  tmp = tmp[as.character(closedocs),]
-  tmp$Match = round(100*(1 - distperc), digits = 1)
-
-  #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
-  rownames(tmp) = NULL
-
-  replaceData(proxSemTable, tmp)
-  
-    }
-
+    return(thegraph)
   })
   
-})
-
-#Create plot of topic blend of document text provided in search
-output$SemanticSearchTimePlot <- renderPlot({
-
-  # #Old method below that generated graph in this chunk
-  # #Get data for linegraph and format for Rcharts plotting
-  # topicmodel <- CreateTopicModel()[["TopicModel"]]
-  # meta <- CreateTopicModel()[["Metadata"]]
-  # semsearch <- SemanticSearch()
-  # 
-  # #Create formula with selected topics
-  # formulatext <- paste(paste0("c(1:", paste(ncol(topicmodel$theta)), ")"), "~ s(year)")
-  # topicformula <- as.formula(formulatext)
-  # 
-  # #Get estimates of all topic proportions over time
-  # graphdat <- estimateEffect(topicformula, topicmodel, metadata = meta)
-  # graphdat <- plot.estimateEffect(graphdat, covariate = "year", model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.50)
-  # 
-  # allprobsmat = data.frame(graphdat$means)
-  # 
-  # #Project all probabilities onto topic blend for search query
-  # y = as.matrix(allprobsmat)%*%semsearch$SemanticTopics
-  # 
-  # #Create resulting plot over time
-  # graphdat = plot(x = graphdat$x, y = y, type = "l",
-  #                 main = "Semantic Search Query Topic Probability Over Time", xlab = "Time", ylab = "Proportion of all Documents")
-
-  
-  #Get base topic graph of all topics
-  graphdat = TopicGraphsCore()[["TopicGraph"]]
-  #Get semantic search results
-  semsearch <- SemanticSearch()
-  
-  #Extract mean probabilities from graph and project onto topic blend from semantic search
-  allprobsmat = data.frame(graphdat$means)
-  y = as.matrix(allprobsmat)%*%semsearch$SemanticTopics
-  
-  #Create resulting plot over time
-  graphdat = plot(x = graphdat$x, y = y, type = "l",
-                  main = "Semantic Search Query Topic Probability Over Time", xlab = "Time", ylab = "Proportion of all Documents")
-  
-  
-  return(graphdat)
-})
-  
-
-#Create plot of keyword/phrase topic projection trend over time search
-output$KeywordTimePlot <- renderPlot({
-  
-  #Get base topic graph of all topics
-  graphdat = TopicGraphsCore()[["TopicGraph"]]
-  
-  #Extract mean probabilities from graph
-  allprobsmat = data.frame(graphdat$means)
-  
-  #Get list of keyphrases to plot
-  plotlist = keyphraseplot$plotdat
-  
-  #Create list to hold resulting probabilities
-  ylist = list()
-  namevec = c()
-  
-  #Loop through every keyphrase
-  for(i in 1:length(plotlist)){
+  #Plot keyword bar graph
+  output$keywordbar <- renderChart({
     
-    #Project mean topic probabilities over time onto topic blend from keyphrase search
-    ylist[[i]] = as.matrix(allprobsmat)%*%plotlist[[i]]$TopicMatchProbability
-    namevec = c(namevec, plotlist[[i]]$QueryText)
     
-  }
-  
-  #Create graph
-  graphdat = matplot(graphdat$x, y = data.frame(ylist), type = "l",
-                     xlab = "Time", ylab = "Proportion of All Documents",
-                     main = "KeyPhrase Query Topic Probability Over Time")
-  legend("topleft", legend = namevec, col = 1:length(plotlist), lty = 1:length(plotlist))
-  
-  
-  return(graphdat)
-})
-
-#Plot selected topics over time
-output$TopicTime <- renderPlotly({
-  
-  #Get base effect estimates over time for all topics and topic model
-  graphdat = TopicGraphsCore()[["TopicGraph"]]
-  topicmodel <- CreateTopicModel()[["TopicModel"]]
-  meta <- CreateTopicModel()[["Metadata"]]
-  
-  #Extract data from the value returned by plot.estimateEffect to display on the chart for selected topics
-  topicsel = unlist(topicclicks$selected)
-  PlotLine = graphdat$means[topicsel]
-  plotConfidenceInterval = graphdat$ci[topicsel]
-  plotTopics = graphdat$labels[topicsel]
-  xvals <- graphdat$x
-  
-  #Create a color palette to choose colors for each plot
-  colorPalette = rainbow(length(unlist(topicclicks$selected)))
-  
-  #Create plotly object
-  graphdatplotly <- plot_ly(type = 'scatter', mode = "lines")
-  graphdatplotly = layout(graphdatplotly, xaxis = list(title = "Year"), yaxis = list(title = "Expected Topic Proportion"))
-  
-  #Loops for plotting the cofidence interval and topic line
-  for(i in 1:length(plotTopics)){
-    chosenColor <- colorPalette[i]
+    #Get data for histogram
+    histdata <- CreateNetwork()[["keywordfreq"]]
     
-    # Add mean line
-    graphdatplotly = add_trace(graphdatplotly, y = PlotLine[[i]], x = xvals, name = plotTopics[i], legendgroup = paste0("Line", i), line = list(color = chosenColor))
+    #Convert into series list for java plotting with rCharts
+    displaynum <- min(nrow(histdata), 50)
+    seriesplot <- list()
+    for (i in 1:min(nrow(histdata), displaynum)){
+      seriesplot[[i]] <- list("y" = histdata$count[[i]], "color" = histdata$color[[i]])
+    }
     
-    ## Add upper and lower CI
-    #graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][1,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
-    #graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][2,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
-
-  }
-  
-  return(graphdatplotly)
-})
-
-# #Function below has been replaced by a datatable object
-# #Print most relevent sentences for selected topic(s) (experimental)
-# output$RelevantSentences <- renderText({
-#   
-#   #Get data for linegraph and format for Rcharts plotting
-#   topicmodel <- CreateTopicModel()[["TopicModel"]]
-#   meta <- CreateTopicModel()[["Metadata"]]
-#   topicprob <- CreateTopicModel()[["TopicProb"]]
-#   sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
-#   sentencetopics <- sentenceanalysis$SentenceTopicPolarity
-#   
-#   #Create formula with selected topics
-#   selectedtopics <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
-#   sentenceprob <- apply(sentencetopics[,selectedtopics], MARGIN = 1, prod)
-#   
-#   #Return top 5 sentences with highest combined product of all topics and sentence entropy
-#   output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
-#   
-#   return(output)
-# })
-
-#Initialize sentence relevance table
-output$RelevantSentencesDT <- DT::renderDataTable({
-  
-  # #Get data from other reactive functions
-  # topicmodel <- CreateTopicModel()[["TopicModel"]]
-  # meta <- CreateTopicModel()[["Metadata"]]
-  # topicprob <- CreateTopicModel()[["TopicProb"]]
-  # sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
-  # sentencetopics <- sentenceanalysis$SentenceTopicPolarity
-  # details <- FilterDetail()
-  # 
-  # #Create formula with selected topics for probability
-  # sel = paste("Topic", unlist(topicclicks$selected))
-  # sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
-  # sentenceent = unlist(sentencetopics$entropy)
-  # ranksentences = unlist(Map("*", sentenceprob, sentenceent))
-  # 
-  # #sel <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
-  # #ranksentences <- apply(sentencetopics[,sel], MARGIN = 1, prod)
-  # 
-  # #Return top 5 sentences with highest combined product of all topics and sentence entropy
-  # #output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
-  # 
-  # #Match source document titles to each sentence
-  # sourcedoc = meta$PMID[sentencetopics$num]
-  # #sourcedoc = details$title[sourcedoc]
-  # 
-  # #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
-  # if(!is.null(details$hyperlink)){
-  #   sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
-  # }else{
-  #   sourcedoc = details$title[sourcedoc]
-  # }
-  # 
-  # #Create data frame of sentences ranked by the product of entropy and topic balance
-  # #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
-  # #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
-  # tmp = data.frame("Source Document" = sourcedoc,
-  #                  #Rank = round(ranksentences, 4),
-  #                  #Probability = round(sentenceprob, 4),
-  #                  #"Information Entropy" = round(sentenceent, 4),
-  #                  "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
-  #                  "Sentence Text" = sentencetopics$text.var)
-  # 
-  # #Order data frame by rank
-  # tmp = tmp[order(ranksentences, decreasing = TRUE),]
-  # #rownames(tmp) = details$PMID
-  # #tmp = tmp[as.character(closedocs),]
-  # #tmp$Match = round(100*(1 - distperc), digits = 1)
-  # 
-  # #browser()
-  
-  #Get core static table data
-  tmp = SentTableCore ()[['CoreTable']]
-  
-  DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE, options=list(pageLength=5))
-  
-})
-
-#Organize sentences by relevance and present in live datatable
-#Update sentence relevance table with search results based on selected topics
-# NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
-proxSentenceTable = dataTableProxy('RelevantSentencesDT')
-observe({
-  
-  #Get selected topics
-  topicsel = unlist(topicclicks$selected)
-  
-  isolate({
+    #Create the plot with options
+    thegraph <- rCharts::Highcharts$new()
+    thegraph$series(data = seriesplot, type = "bar", name = "Number of Articles")
+    thegraph$xAxis(categories = histdata$name[1:displaynum], title = list(text = ""))
+    thegraph$yAxis(title = list(text = "Number of Articles Containing Keyword"))
+    thegraph$chart(zoomType = "x")
+    thegraph$addParams(dom = 'keywordbar')
+    thegraph$legend(enabled = F)
     
-    # If something was returned by the semantic search, update the table
-    if(length(topicsel) > 0){
+    thegraph$plotOptions(bar = list(stacking = "normal", 
+                                    cursor = 'pointer', 
+                                    point = list(events = list(click = 
+                                                                 "#! function() { 
+                                                             Shiny.onInputChange('click', {                                            
+                                                             category: this.category, chart: 'keyword'
+                                                           })
+                                                           } !#")
+                                    )
+    )
+    )
+    
+    return(thegraph)
+  })
+  
+  #Plot Topic Trends By Year
+  # output$TopicTime <- renderTaucharts({
+  #   
+  #   
+  #   #Get data for linegraph and format for Rcharts plotting
+  #   topicmodel <- CreateTopicModel()[["TopicModel"]]
+  #   meta <- CreateTopicModel()[["Metadata"]]
+  #   graphdat <- estimateEffect( ~ year, topicmodel, metadata = meta, uncertainty = "None")
+  #   graphdat <- plot.estimateEffect(graphdat, covariate = "year", model = topicmodel, method = "continuous", xlab = "Year", printlegend = F)
+  #   graphframe <- data.frame(graphdat$x, graphdat$means)
+  #   colnames(graphframe) <- c("year", paste("Topic", graphdat$topics))
+  #   #graphframe <- melt(graphframe, id = "year", na.rm = TRUE)
+  #   
+  #   #Create graph
+  #   
+  #   
+  #   tautime <- tauchart(graphframe)
+  #   thegraph <- tau_line(tautime, "year", "Topic.1")
+  #   
+  # #   thegraph <- Highcharts$new()
+  # #   thegraph$chart(zoomType = "x")
+  # #   
+  # #   
+  # #   #thegraph <- hPlot(value ~ year, group = "variable", data = graphframe, type = "line", title = "Topic Prevalence Over Time", radius = 6)
+  # #   thegraph$yAxis(title = (list(text = "Topic Proportion")))
+  # #   thegraph$addParams(dom = 'TopicTime')
+  # #   
+  # #   for (i in 1:length(graphdat$topics)){
+  # #     
+  # #     lineseries <- list()
+  # #     lineseries <- javalister(data.frame(graphframe[,1], graphframe[,i+1]))
+  # #     
+  # #     thegraph$series(name = paste("Topic", graphdat$topics[i]), type = 'line', data = lineseries, yAxis = 0, turboThreshold = length(lineseries), marker = list(enabled = FALSE), lineWidth = 1)
+  # #     
+  # #   }
+  #   
+  #   return(thegraph)
+  # })
+  
+  #Find topics that represent keywords in search
+  output$TopicFind <- renderUI({
+    
+    # #Code moved to reactive statement so results can be shared across several outputs
+    # topicmodel <- CreateTopicModel()[["TopicModel"]]
+    # 
+    # topicprobs <- list()
+    # 
+    # if(nchar(input$keyword_search) > 0){
+    # 
+    # searchvect <- strsplit(input$keyword_search, split = " ", fixed = TRUE)
+    # 
+    # topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
+    # 
+    # if(is.null(topicprobs$TopicMatchProbability) == FALSE){
+    # 
+    # topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
+    # 
+    # }
+    # 
+    # }
+    
+    #Get topic probabilities from keyword search
+    topicprobs = KeywordSearch()
+    
+    
+    return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
+                      paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]), ": ", 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))],4), "%", collapse = "<br>"),
+                      "<br/> Words/Phrases Not Found In Any Topics: ", paste(topicprobs$MissingWords, collapse = " "))))
+    
+  })
+  
+  
+  #Find topics that represent keywords in search
+  output$TopicFindProb <- renderChart({
+    
+    # #Code moved to reactive statement so results can be shared across several outputs
+    # topicmodel <- CreateTopicModel()[["TopicModel"]]
+    # 
+    # topicprobs <- list()
+    # 
+    # if(nchar(input$keyword_search) > 0){
+    #   
+    #   searchvect <- strsplit(input$keyword_search, split = " ", fixed = TRUE)
+    #   
+    #   topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
+    #   
+    #   if(is.null(topicprobs$TopicMatchProbability) == FALSE){
+    #     
+    #     topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
+    #     
+    #   }
+    #   
+    # }
+    
+    #Get topic probabilities from keyword search
+    topicprobs = KeywordSearch()
+    
+    
+    #Convert into series list for java plotting with rCharts
+    displaynum <- min(nrow(histdata), 50)
+    seriesplot <- list()
+    for (i in 1:min(nrow(histdata), displaynum)){
+      seriesplot[[i]] <- list("y" = histdata$count[[i]], "color" = histdata$color[[i]])
+    }
+    
+    #Create graph
+    thegraph <- rCharts::Highcharts$new()
+    thegraph$series(data = seriesplot, type = "column", name = "Topics")
+    thegraph$xAxis(categories = histdata$name[1:displaynum], title = list(text = ""))
+    thegraph$yAxis(title = list(text = "Number of Articles Containing Keyword"))
+    thegraph$chart(zoomType = "x")
+    thegraph$addParams(dom = 'keywordbar')
+    thegraph$legend(enabled = F)
+    
+    thegraph$plotOptions(bar = list(stacking = "normal", 
+                                    cursor = 'pointer', 
+                                    point = list(events = list(click = 
+                                                                 "#! function() { 
+                                                             Shiny.onInputChange('click', {                                            
+                                                             category: this.category, chart: 'keyword'
+                                                           })
+                                                           } !#")
+                                    )
+    )
+    )
+    
+    return(thegraph)
+    
+    return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
+                      paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]),": " , 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))], 3), "%", collapse = "<br>"),
+                      "<br/> Words Not Found In Any Topics: ",
+                      paste(topicprobs$MissingWords, "hr()"))))
+    
+  })
+  
+  
+  #Find documents that match document text provided in search
+  output$TopicSemMatch <- renderUI({
+    
+    #Get semantic search topic match vector and document ranking
+    semsearch <- SemanticSearch()
+    
+    #Sort topic vector from largest to smallest
+    topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
+    
+    #Get ranked list of most likely matching documents
+    closedocs <- semsearch$DocumentMatchRank
+    
+    #Get abstract list and order by closeness to new document based on topic proportions
+    details <- FilterDetail()
+    names(details$abstract) <- details$PMID
+    output <- details$abstract[as.character(closedocs)]
+    
+    return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
+                      paste0(names(topicvec[1:min(5, length(topicvec))]), ": " , 100*round(topicvec[1:min(5, length(topicvec))], 3), "%", collapse = "<br>"), "<br><br>")))
+    #paste(names(topicvec[1:min(5, length(topicvec))]), topicvec[1:min(5, length(topicvec))], collapse = ", "))))
+    
+  })
+  
+  #Initialize semantic document matching table
+  output$SemDocMatchTable <- DT::renderDataTable({
+    
+    #Get core table data
+    tmp = DocTableCore()[['CoreTable']]
+    
+    if(!is.null(tmp)){
       
-      #Get core static table data
-      tmp = SentTableCore ()[['CoreTable']]
+      #Set reactive flag to TRUE for document table generation
+      tableinitialized$DocumentDT = TRUE
       
-      #Get data from other reactive functions
-      topicmodel <- CreateTopicModel()[["TopicModel"]]
-      meta <- CreateTopicModel()[["Metadata"]]
-      topicprob <- CreateTopicModel()[["TopicProb"]]
-      sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
-      sentencetopics <- sentenceanalysis$SentenceTopicPolarity
-      details <- FilterDetail()
+      #Remove row names so they are not displayed
+      rownames(tmp) = NULL
       
-      #Create formula with selected topics for probability
-      sel = paste("Topic", unlist(topicclicks$selected))
-      sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
-      sentenceent = unlist(sentencetopics$entropy)
-      ranksentences = unlist(Map("*", sentenceprob, sentenceent))
+      DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE,
+                    options=list(pageLength=5, columnDefs = list(list(
+                      targets = 3,
+                      render = JS(
+                        "function(data, type, row, meta) {",
+                        "return type === 'display' && data.length > 1000 ?",
+                        "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
+                        "}")
+                    ))))
       
-      #sel <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
-      #ranksentences <- apply(sentencetopics[,sel], MARGIN = 1, prod)
+    }else{
       
-      #Return top 5 sentences with highest combined product of all topics and sentence entropy
-      #output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
-      
-      # #Match source document titles to each sentence
-      # sourcedoc = meta$PMID[sentencetopics$num]
-      # #sourcedoc = details$title[sourcedoc]
-      # 
-      # #Extract title and add hyperlink if it exists. Otherwise, only extract title as plain text
-      # if(!is.null(details$hyperlink)){
-      #   sourcedoc = paste0('<a href="',details$hyperlink[sourcedoc],'"', "target='_blank'>",details$title[sourcedoc],"</a>")
-      # }else{
-      #   sourcedoc = details$title[sourcedoc]
-      # }
-      
-      #Create data frame of sentences ranked by the product of entropy and topic balance
-      #Variable 'rankSentences' is not a percent! Dividing it by the maximum value is only a way to remove the decimals from being 
-      #dislayed on the UI. This is not a correct approach, just a hacky way of getting work done.
-      # tmp = data.frame("Source Document" = sourcedoc,
-      #                  #Rank = round(ranksentences, 4),
-      #                  #Probability = round(sentenceprob, 4),
-      #                  #"Information Entropy" = round(sentenceent, 4),
-      #                  "Match Percent" = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2),
-      #                  "Sentence Text" = sentencetopics$text.var)
-      
-      tmp$Match.Percent = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2)
-      
-      #Order data frame by rank
-      tmp = tmp[order(ranksentences, decreasing = TRUE),]
-      #rownames(tmp) = details$PMID
-      #tmp = tmp[as.character(closedocs),]
-      #tmp$Match = round(100*(1 - distperc), digits = 1)
-      
-      replaceData(proxSentenceTable, tmp)
+      #Set reactive flag to FALSE for document table generation
+      tableinitialized$DocumentDT = FALSE
       
     }
     
   })
   
-})
-
-
-
-
-
-#Plot topic hierarchy
-output$TopicHierarchy <- renderPlot({
+  #Update semantic document table with search results to find documents that match document text provided in semantic search
+  # NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
+  proxSemTable = dataTableProxy('SemDocMatchTable')
+  observe({
+    
+    # Check to see if table has been initialized:
+    if(tableinitialized$DocumentDT){
+      
+      #Get core static table
+      tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
+      
+      if(!is.null(tmp)){
+      
+      #Get semantic search topic match vector and document ranking
+      semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
+      
+      isolate({
+        
+        # If something was returned by the semantic search and if the table exists, update the table
+        if(!is.null(semsearch)){
+          
+          #Sort topic vector from largest to smallest
+          topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
+          
+          #Get ranked list of most likely matching documents
+          closedocs <- semsearch$DocumentMatchRank
+          
+          #Get document match percent
+          distperc <- semsearch$DocumentCosDistance
+          
+          #Rank items by matching result of distance calculations to document ID in row name
+          tmp = tmp[as.character(closedocs),]
+          tmp$Match = round(100*(1 - distperc), digits = 1)
+          
+          #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
+          rownames(tmp) = NULL
+          
+          replaceData(proxSemTable, tmp)
+          
+        }else{
+          #If no search terms have been entered, return a blank table
+          #Get core static table data
+          tmp = tmp[1,]
+          
+          #Return blank table for rendering
+          tmp[1,] = ""
+          tmp[,ncol(tmp)] = "Enter search terms to return results"
+          
+          #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
+          rownames(tmp) = NULL
+          
+          replaceData(proxSemTable, tmp)
+          
+        }
+        
+        
+      })
+      
+      }
+      
+    }
+    
+  })
   
-  #
-  #Get data for linegraph and format for Rcharts plotting
-  topicmodel <- CreateTopicModel()[["TopicModel"]]
-  #meta <- CreateTopicModel()[["Metadata"]]
-  #topicprob <- CreateTopicModel()[["TopicProb"]]
-  
-  #Generate labels for leaf (choose FREX metric for now):
-  topiclabs = labelTopics(topicmodel, n = 4)
-  labvect = apply(topiclabs$frex, MARGIN = 1, function(x) paste(x, collapse = ", "))
-  
-  #Calculate cosine distance matrix using word probabilities?
-  wordprobs = as.matrix(exp(topicmodel$beta$logbeta[[1]]))
-  rownames(wordprobs) = labvect
-  cosdist <- proxy::dist(wordprobs, method = "cosine")
-  #cosdist = as.matrix(cosdist)
-  
-  #Cluster based on cosine distance using average linkage
-  #NOTE: Uses average number of documents in topic as weighting argument (members) for clustering
-  cosclust <- hclust(cosdist, method = "average", members = colSums(topicmodel$theta))
-  #cosclust <- hclust(cosdist, method = "average")
-  cosdend <- as.dendrogram(cosclust, label = labvect)
-  plotly::plot_dendro(cosdend)
-  cosclust <- pvclust::pvclust(as.matrix(cosdist), method.hclust = "average")
-  
-  return(graphdat)
-})
-
-#Plot topic hierarchy
-output$TopicTree <- renderCollapsibleTree({
-  
-  #
-  #Get data for linegraph and format for Rcharts plotting
-  topicmodel <- CreateTopicModel()[["TopicModel"]]
-  #meta <- CreateTopicModel()[["Metadata"]]
-  #topicprob <- CreateTopicModel()[["TopicProb"]]
-  
-  #Generate hierarchy TODO: Try adding nwords argument to see if it improves
-  hierframe = topichierarchy(logbeta = topicmodel$beta$logbeta[[1]], theta = topicmodel$theta,
-                             vocab = topicmodel$vocab, vocabcount = topicmodel$settings$dim$wcounts$x,
-                             nwords = NULL, nlab = 4, difftype = "global")
-  
-  # #Generate labels for leaf (choose FREX metric for now):
-  # topiclabs = labelTopics(topicmodel, n = 4)
-  # labvect = apply(topiclabs$frex, MARGIN = 1, function(x) paste(x, collapse = ", "))
-  # 
-  # #Calculate cosine distance matrix using word probabilities?
-  # wordprobs = as.matrix(exp(topicmodel$beta$logbeta[[1]]))
-  # rownames(wordprobs) = labvect
-  # cosdist <- proxy::dist(wordprobs, method = "cosine")
-  # #cosdist = as.matrix(cosdist)
-  # 
-  # #Cluster based on cosine distance using average linkage
-  # #NOTE: Uses average number of documents in topic as weighting argument (members) for clustering
-  # cosclust <- hclust(cosdist, method = "average", members = colSums(topicmodel$theta))
-  # #cosclust <- hclust(cosdist, method = "average")
-  # cosdend <- as.dendrogram(cosclust, label = labvect)
-  # cosdend = data.tree::as.Node(cosdend)
-  
-  #Create graph tooltip html:
-  hierframe$tooltip = paste0(
-    "Topic Content: ",
-    hierframe$GlobalFrex,
-    "<br><br>Split Difference: ",
-    hierframe$SiblingFrex,
-    "<br><br>Parent Difference: ",
-    hierframe$ParentFrex
-  )
-  
-  #Create hierarchy
-  #graphout = collapsibleTreeNetwork(hierframe[,c("Parent", "Node", "FrexSplit", "NodeSize")],
-  #                                 attribute = "FrexSplit", nodeSize = "NodeSize", collapsed = FALSE)
-  graphout = collapsibleTreeNetwork(hierframe[,c("Parent", "Node", "tooltip", "NodeSize")],
-                                    tooltipHtml = "tooltip", nodeSize = "NodeSize", collapsed = FALSE)
-  return(graphout)
-  #plotly::plot_dendro(cosdend)
-  #cosclust <- pvclust::pvclust(as.matrix(cosdist), method.hclust = "average")
-})
-
-#Plot Topics in PCA reduced graph using LDAvis
-output$TopicPCA <- renderVis({
+  #Create plot of topic blend of document text provided in search
+  output$SemanticSearchTimePlot <- renderPlot({
+    
+    # #Old method below that generated graph in this chunk
+    # #Get data for linegraph and format for Rcharts plotting
+    # topicmodel <- CreateTopicModel()[["TopicModel"]]
+    # meta <- CreateTopicModel()[["Metadata"]]
+    # semsearch <- SemanticSearch()
+    # 
+    # #Create formula with selected topics
+    # formulatext <- paste(paste0("c(1:", paste(ncol(topicmodel$theta)), ")"), "~ s(year)")
+    # topicformula <- as.formula(formulatext)
+    # 
+    # #Get estimates of all topic proportions over time
+    # graphdat <- estimateEffect(topicformula, topicmodel, metadata = meta)
+    # graphdat <- plot.estimateEffect(graphdat, covariate = "year", model = topicmodel, method = "continuous", xlab = "Year", printlegend = T, ci.level = 0.50)
+    # 
+    # allprobsmat = data.frame(graphdat$means)
+    # 
+    # #Project all probabilities onto topic blend for search query
+    # y = as.matrix(allprobsmat)%*%semsearch$SemanticTopics
+    # 
+    # #Create resulting plot over time
+    # graphdat = plot(x = graphdat$x, y = y, type = "l",
+    #                 main = "Semantic Search Query Topic Probability Over Time", xlab = "Time", ylab = "Proportion of all Documents")
+    
+    
+    #Get base topic graph of all topics
+    graphdat = TopicGraphsCore()[["TopicGraph"]]
+    #Get semantic search results
+    semsearch <- SemanticSearch()
+    
+    #Extract mean probabilities from graph and project onto topic blend from semantic search
+    allprobsmat = data.frame(graphdat$means)
+    y = as.matrix(allprobsmat)%*%semsearch$SemanticTopics
+    
+    #Create resulting plot over time
+    graphdat = plot(x = graphdat$x, y = y, type = "l",
+                    main = "Semantic Search Query Topic Probability Over Time", xlab = "Time", ylab = "Proportion of all Documents")
+    
+    
+    return(graphdat)
+  })
   
   
-  #Get data for histogram
-  graphTopic <- CreateTopicModel()[["TopicPCAJSON"]]
+  #Create plot of keyword/phrase topic projection trend over time search
+  output$KeywordTimePlot <- renderPlot({
+    
+    #Get base topic graph of all topics
+    graphdat = TopicGraphsCore()[["TopicGraph"]]
+    
+    #Extract mean probabilities from graph
+    allprobsmat = data.frame(graphdat$means)
+    
+    #Get list of keyphrases to plot
+    plotlist = keyphraseplot$plotdat
+    
+    #Create list to hold resulting probabilities
+    ylist = list()
+    namevec = c()
+    
+    #Loop through every keyphrase
+    for(i in 1:length(plotlist)){
+      
+      #Project mean topic probabilities over time onto topic blend from keyphrase search
+      ylist[[i]] = as.matrix(allprobsmat)%*%plotlist[[i]]$TopicMatchProbability
+      namevec = c(namevec, plotlist[[i]]$QueryText)
+      
+    }
+    
+    #Create graph
+    graphdat = matplot(graphdat$x, y = data.frame(ylist), type = "l",
+                       xlab = "Time", ylab = "Proportion of All Documents",
+                       main = "KeyPhrase Query Topic Probability Over Time")
+    legend("topleft", legend = namevec, col = 1:length(plotlist), lty = 1:length(plotlist))
+    
+    
+    return(graphdat)
+  })
   
-  return(graphTopic)
-})
-
-
-
+  #Plot selected topics over time
+  output$TopicTime <- renderPlotly({
+    
+    #Get base effect estimates over time for all topics and topic model
+    graphdat = TopicGraphsCore()[["TopicGraph"]]
+    topicmodel <- CreateTopicModel()[["TopicModel"]]
+    meta <- CreateTopicModel()[["Metadata"]]
+    
+    #Extract data from the value returned by plot.estimateEffect to display on the chart for selected topics
+    topicsel = unlist(topicclicks$selected)
+    PlotLine = graphdat$means[topicsel]
+    plotConfidenceInterval = graphdat$ci[topicsel]
+    plotTopics = graphdat$labels[topicsel]
+    xvals <- graphdat$x
+    
+    #Create a color palette to choose colors for each plot
+    colorPalette = rainbow(length(unlist(topicclicks$selected)))
+    
+    #Create plotly object
+    graphdatplotly <- plot_ly(type = 'scatter', mode = "lines")
+    graphdatplotly = layout(graphdatplotly, xaxis = list(title = "Year"), yaxis = list(title = "Expected Topic Proportion"))
+    
+    #Loops for plotting the cofidence interval and topic line
+    for(i in 1:length(plotTopics)){
+      chosenColor <- colorPalette[i]
+      
+      # Add mean line
+      graphdatplotly = add_trace(graphdatplotly, y = PlotLine[[i]], x = xvals, name = plotTopics[i], legendgroup = paste0("Line", i), line = list(color = chosenColor))
+      
+      ## Add upper and lower CI
+      #graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][1,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
+      #graphdatplotly = add_trace(graphdatplotly, y = plotConfidenceInterval[[i]][2,], x = xvals, name = plotTopics[i], showlegend = FALSE, legendgroup = paste0("Line", i), line = list(color = chosenColor,dash = 'dash' ))
+      
+    }
+    
+    return(graphdatplotly)
+  })
+  
+  # #Function below has been replaced by a datatable object
+  # #Print most relevent sentences for selected topic(s) (experimental)
+  # output$RelevantSentences <- renderText({
+  #   
+  #   #Get data for linegraph and format for Rcharts plotting
+  #   topicmodel <- CreateTopicModel()[["TopicModel"]]
+  #   meta <- CreateTopicModel()[["Metadata"]]
+  #   topicprob <- CreateTopicModel()[["TopicProb"]]
+  #   sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
+  #   sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+  #   
+  #   #Create formula with selected topics
+  #   selectedtopics <- c("entropy", paste("Topic", unlist(topicclicks$selected)))
+  #   sentenceprob <- apply(sentencetopics[,selectedtopics], MARGIN = 1, prod)
+  #   
+  #   #Return top 5 sentences with highest combined product of all topics and sentence entropy
+  #   output <- sentencetopics$text.var[order(sentenceprob, decreasing = TRUE)][1:5]
+  #   
+  #   return(output)
+  # })
+  
+  #Initialize sentence relevance table
+  output$RelevantSentencesDT <- DT::renderDataTable({
+    
+    #Get core static table data
+    tmp = SentTableCore ()[['CoreTable']]
+    
+    #Check to see if core static table has yet been generated
+    if(!is.null(tmp)){
+      
+      #Set reactive flag to TRUE for sentence table generation
+      tableinitialized$SentenceDT = TRUE
+      
+      #Create datatable object
+      DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE, options=list(pageLength=5))
+      
+    }else{
+      
+      #Set reactive flag to FALSE for sentence table generation
+      tableinitialized$SentenceDT = FALSE
+      
+    }
+    
+  })
+  
+  #Organize sentences by relevance and present in live datatable
+  #Update sentence relevance table with search results based on selected topics
+  # NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
+  proxSentenceTable = dataTableProxy('RelevantSentencesDT')
+  observe({
+    
+    # Check to see if table has been initialized:
+    if(tableinitialized$SentenceDT){
+      
+      #Get core static table
+      tmp = tryCatch(SentTableCore()[['CoreTable']], error = function(e) NULL)
+      
+      if(!is.null(tmp)){
+      
+      #Get selected topics
+      topicsel = unlist(topicclicks$selected)
+      
+      isolate({
+        
+        # If something was returned by the semantic search, update the table
+        if(length(topicsel) > 0){
+          
+          #Get data from other reactive functions
+          sentenceanalysis <- CreateTopicModel()[["SentenceTopics"]]
+          sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+          
+          #Create formula with selected topics for probability
+          sel = paste("Topic", unlist(topicclicks$selected))
+          sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
+          sentenceent = unlist(sentencetopics$entropy)
+          ranksentences = unlist(Map("*", sentenceprob, sentenceent))
+          
+          #Enter match criteria into table
+          tmp$Match.Percent = round((ranksentences/max(ranksentences, na.rm = TRUE))*100,2)
+          
+          #Order data frame by rank
+          tmp = tmp[order(ranksentences, decreasing = TRUE),]
+          
+          #Replace data in pre-generated datatable object
+          replaceData(proxSentenceTable, tmp)
+          
+        }else{
+          #If no topics have been selected, return a blank table
+          #Get single row of core static table data
+          tmp = tmp[1,]
+          
+          #Return blank table for rendering
+          tmp[1,] = ""
+          tmp[,ncol(tmp)] = "Select topic bubbles to see relevant sentences"
+          
+          replaceData(proxSentenceTable, tmp)
+          
+        }
+        
+      })
+      
+      }
+      
+    }
+    
+  })
+  
+  
+  
+  
+  
+  #Plot topic hierarchy
+  output$TopicHierarchy <- renderPlot({
+    
+    #
+    #Get data for linegraph and format for Rcharts plotting
+    topicmodel <- CreateTopicModel()[["TopicModel"]]
+    #meta <- CreateTopicModel()[["Metadata"]]
+    #topicprob <- CreateTopicModel()[["TopicProb"]]
+    
+    #Generate labels for leaf (choose FREX metric for now):
+    topiclabs = labelTopics(topicmodel, n = 4)
+    labvect = apply(topiclabs$frex, MARGIN = 1, function(x) paste(x, collapse = ", "))
+    
+    #Calculate cosine distance matrix using word probabilities?
+    wordprobs = as.matrix(exp(topicmodel$beta$logbeta[[1]]))
+    rownames(wordprobs) = labvect
+    cosdist <- proxy::dist(wordprobs, method = "cosine")
+    #cosdist = as.matrix(cosdist)
+    
+    #Cluster based on cosine distance using average linkage
+    #NOTE: Uses average number of documents in topic as weighting argument (members) for clustering
+    cosclust <- hclust(cosdist, method = "average", members = colSums(topicmodel$theta))
+    #cosclust <- hclust(cosdist, method = "average")
+    cosdend <- as.dendrogram(cosclust, label = labvect)
+    plotly::plot_dendro(cosdend)
+    cosclust <- pvclust::pvclust(as.matrix(cosdist), method.hclust = "average")
+    
+    return(graphdat)
+  })
+  
+  #Plot topic hierarchy
+  output$TopicTree <- renderCollapsibleTree({
+    
+    #
+    #Get data for linegraph and format for Rcharts plotting
+    topicmodel <- CreateTopicModel()[["TopicModel"]]
+    #meta <- CreateTopicModel()[["Metadata"]]
+    #topicprob <- CreateTopicModel()[["TopicProb"]]
+    
+    #Generate hierarchy TODO: Try adding nwords argument to see if it improves
+    hierframe = topichierarchy(logbeta = topicmodel$beta$logbeta[[1]], theta = topicmodel$theta,
+                               vocab = topicmodel$vocab, vocabcount = topicmodel$settings$dim$wcounts$x,
+                               nwords = NULL, nlab = 4, difftype = "global")
+    
+    # #Generate labels for leaf (choose FREX metric for now):
+    # topiclabs = labelTopics(topicmodel, n = 4)
+    # labvect = apply(topiclabs$frex, MARGIN = 1, function(x) paste(x, collapse = ", "))
+    # 
+    # #Calculate cosine distance matrix using word probabilities?
+    # wordprobs = as.matrix(exp(topicmodel$beta$logbeta[[1]]))
+    # rownames(wordprobs) = labvect
+    # cosdist <- proxy::dist(wordprobs, method = "cosine")
+    # #cosdist = as.matrix(cosdist)
+    # 
+    # #Cluster based on cosine distance using average linkage
+    # #NOTE: Uses average number of documents in topic as weighting argument (members) for clustering
+    # cosclust <- hclust(cosdist, method = "average", members = colSums(topicmodel$theta))
+    # #cosclust <- hclust(cosdist, method = "average")
+    # cosdend <- as.dendrogram(cosclust, label = labvect)
+    # cosdend = data.tree::as.Node(cosdend)
+    
+    #Create graph tooltip html:
+    hierframe$tooltip = paste0(
+      "Topic Content: ",
+      hierframe$GlobalFrex,
+      "<br><br>Split Difference: ",
+      hierframe$SiblingFrex,
+      "<br><br>Parent Difference: ",
+      hierframe$ParentFrex
+    )
+    
+    #Create hierarchy
+    #graphout = collapsibleTreeNetwork(hierframe[,c("Parent", "Node", "FrexSplit", "NodeSize")],
+    #                                 attribute = "FrexSplit", nodeSize = "NodeSize", collapsed = FALSE)
+    graphout = collapsibleTreeNetwork(hierframe[,c("Parent", "Node", "tooltip", "NodeSize")],
+                                      tooltipHtml = "tooltip", nodeSize = "NodeSize", collapsed = FALSE)
+    return(graphout)
+    #plotly::plot_dendro(cosdend)
+    #cosclust <- pvclust::pvclust(as.matrix(cosdist), method.hclust = "average")
+  })
+  
+  #Plot Topics in PCA reduced graph using LDAvis
+  output$TopicPCA <- renderVis({
+    
+    
+    #Get data for histogram
+    graphTopic <- CreateTopicModel()[["TopicPCAJSON"]]
+    
+    return(graphTopic)
+  })
+  
+  
+  
 })
 
