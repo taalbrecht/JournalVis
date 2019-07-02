@@ -2219,7 +2219,7 @@ shinyServer(function(input, output, session) {
     topicmodel <- CreateTopicModel()[["TopicModel"]]
     meta <- CreateTopicModel()[["Metadata"]]
     
-    #Create formula with selected topics
+    #Create formula with all topics
     formulatext <- paste(paste0("c(1:", paste(ncol(topicmodel$theta)), ")"), "~ s(year)")
     topicformula <- as.formula(formulatext)
     
@@ -2931,16 +2931,6 @@ shinyServer(function(input, output, session) {
       #Remove row names so they are not displayed
       rownames(tmp) = NULL
       
-      DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE,
-                    options=list(pageLength=5, columnDefs = list(list(
-                      targets = 3,
-                      render = JS(
-                        "function(data, type, row, meta) {",
-                        "return type === 'display' && data.length > 1000 ?",
-                        "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
-                        "}")
-                    ))))
-      
     }else{
       
       #Set reactive flag to FALSE for document table generation
@@ -2948,7 +2938,17 @@ shinyServer(function(input, output, session) {
       
     }
     
-  })
+    #Return data frame for DT rendering
+    tmp
+    
+  }, escape = FALSE, style='bootstrap', options=list(pageLength=5, columnDefs = list(list(
+    targets = 3,
+    render = JS(
+      "function(data, type, row, meta) {",
+      "return type === 'display' && data.length > 1000 ?",
+      "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
+      "}")
+  ))))
   
   #Update semantic document table with search results to find documents that match document text provided in semantic search
   # NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
@@ -3165,9 +3165,6 @@ shinyServer(function(input, output, session) {
       #Set reactive flag to TRUE for sentence table generation
       tableinitialized$SentenceDT = TRUE
       
-      #Create datatable object
-      DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE, options=list(pageLength=5))
-      
     }else{
       
       #Set reactive flag to FALSE for sentence table generation
@@ -3175,7 +3172,10 @@ shinyServer(function(input, output, session) {
       
     }
     
-  })
+    #Return data frame for DT rendering
+    tmp
+    
+  }, style='bootstrap', escape = FALSE, options=list(pageLength=5))
   
   #Organize sentences by relevance and present in live datatable
   #Update sentence relevance table with search results based on selected topics
