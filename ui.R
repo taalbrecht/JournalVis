@@ -9,7 +9,8 @@ shinyUI(fluidPage(
   useShinyjs(),
   fluidRow(column(3,
                   sidebarPanel(width = 12,
-                               radioButtons(inputId = "usermode", label = "Select user mode", choices = c("Pre-Loaded", "Basic", "Advanced"), selected = "Pre-Loaded"),
+                               conditionalPanel(condition="output.showUI",
+                                                radioButtons(inputId = "usermode", label = "Select user mode", choices = c("Pre-Loaded", "Basic", "Advanced"), selected = "Pre-Loaded"),
                                conditionalPanel(condition="input.usermode=='Pre-Loaded'",
                                                 uiOutput("ui_preloadmodlist")),
                                conditionalPanel(condition="input.usermode!='Pre-Loaded'",
@@ -75,7 +76,7 @@ shinyUI(fluidPage(
                                actionButton("gentopicmodelbutton", label = "Create Topic Model"),
                                actionButton("debug_button", "Enter R Code Browser"),
                                hr()
-                               )
+                               ))
 
                   )
   ),

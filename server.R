@@ -303,10 +303,28 @@ shinyServer(function(input, output, session) {
     #Get a list of all .RData files
     choicevals <- list.files(pattern = ".RData")
     
+    #Determine which model should be selected based on URL query if provided
+    selected = choicevals[1]
+    modelURLquery = getQueryString()$model
+    if(!is.null(modelURLquery)){
+      selected = choicevals[choicevals == modelURLquery][1]
+    }
+    
     selectInput(inputId = "preloadmodsel", label = "Select dataset",
-                choices = choicevals, selected = choicevals[1])
+                choices = choicevals, selected = selected)
     
   })
+  
+  #Output UI for determining if any options on the UI should be displayed:
+  output$showUI <- reactive({
+    showUI = TRUE
+    if(!is.null(getQueryString()$showUI) && getQueryString()$showUI == "FALSE"){
+      showUI = FALSE
+    }
+    showUI
+  })
+  outputOptions(output, 'showUI', suspendWhenHidden = FALSE)
+  
   
   ####################################################################
   ######## Reactive Function Section
