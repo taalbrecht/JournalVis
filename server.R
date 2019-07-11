@@ -2840,11 +2840,11 @@ shinyServer(function(input, output, session) {
     #Get topic probabilities from keyword search
     topicprobs = KeywordSearch()
     
-    
+    if(!is.null(topicprobs$TopicMatchProbability)){
     return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
                       paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]), ": ", 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))],4), "%", collapse = "<br>"),
                       "<br/> Words/Phrases Not Found In Any Topics: ", paste(topicprobs$MissingWords, collapse = " "))))
-    
+    }
   })
   
   
@@ -2916,8 +2916,9 @@ shinyServer(function(input, output, session) {
   output$TopicSemMatch <- renderUI({
     
     #Get semantic search topic match vector and document ranking
-    semsearch <- SemanticSearch()
+    semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
     
+    if(!is.null(semsearch)){
     #Sort topic vector from largest to smallest
     topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
     
@@ -2932,6 +2933,7 @@ shinyServer(function(input, output, session) {
     return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
                       paste0(names(topicvec[1:min(5, length(topicvec))]), ": " , 100*round(topicvec[1:min(5, length(topicvec))], 3), "%", collapse = "<br>"), "<br><br>")))
     #paste(names(topicvec[1:min(5, length(topicvec))]), topicvec[1:min(5, length(topicvec))], collapse = ", "))))
+    }
     
   })
   
@@ -3059,27 +3061,31 @@ shinyServer(function(input, output, session) {
     #                 main = "Semantic Search Query Topic Probability Over Time", xlab = "Time", ylab = "Proportion of all Documents")
     
     
-    #Get base topic graph of all topics
-    graphdat = TopicGraphsCore()[["TopicGraph"]]
     #Get semantic search results
-    semsearch <- SemanticSearch()
+    semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
     
-    #Extract mean probabilities from graph and project onto topic blend from semantic search
-    allprobsmat = data.frame(graphdat$means)
-    y = as.matrix(allprobsmat)%*%semsearch$SemanticTopics
+    if(!is.null(semsearch)){
+      #Get base topic graph of all topics
+      graphdat = TopicGraphsCore()[["TopicGraph"]]
     
-    #Create resulting plot over time
-    graphdat = plot(x = graphdat$x, y = y, type = "l",
+      #Extract mean probabilities from graph and project onto topic blend from semantic search
+      allprobsmat = data.frame(graphdat$means)
+      y = as.matrix(allprobsmat)%*%semsearch$SemanticTopics
+    
+      #Create resulting plot over time
+      graphdat = plot(x = graphdat$x, y = y, type = "l",
                     main = "Semantic Search Query Topic Probability Over Time", xlab = "Time", ylab = "Proportion of all Documents")
     
+      return(graphdat)
+    }
     
-    return(graphdat)
   })
   
   
   #Create plot of keyword/phrase topic projection trend over time search
   output$KeywordTimePlot <- renderPlot({
     
+    if(!is.null(keyphraseplot$plotdat)){
     #Get base topic graph of all topics
     graphdat = TopicGraphsCore()[["TopicGraph"]]
     
@@ -3110,10 +3116,14 @@ shinyServer(function(input, output, session) {
     
     
     return(graphdat)
+    }
+    
   })
   
   #Plot selected topics over time
   output$TopicTime <- renderPlotly({
+    
+    if(length(topicclicks$selected) > 0){
     
     #Get base effect estimates over time for all topics and topic model
     graphdat = TopicGraphsCore()[["TopicGraph"]]
@@ -3148,6 +3158,7 @@ shinyServer(function(input, output, session) {
     }
     
     return(graphdatplotly)
+    }
   })
   
   # #Function below has been replaced by a datatable object
