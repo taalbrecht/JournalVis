@@ -9,7 +9,8 @@ shinyUI(fluidPage(
   useShinyjs(),
   fluidRow(column(3,
                   sidebarPanel(width = 12,
-                               radioButtons(inputId = "usermode", label = "Select user mode", choices = c("Pre-Loaded", "Basic", "Advanced"), selected = "Pre-Loaded"),
+                               conditionalPanel(condition="output.showUI",
+                                                radioButtons(inputId = "usermode", label = "Select user mode", choices = c("Pre-Loaded", "Basic", "Advanced"), selected = "Pre-Loaded"),
                                conditionalPanel(condition="input.usermode=='Pre-Loaded'",
                                                 uiOutput("ui_preloadmodlist")),
                                conditionalPanel(condition="input.usermode!='Pre-Loaded'",
@@ -77,7 +78,7 @@ shinyUI(fluidPage(
                                actionButton("gentopicmodelbutton", label = "Create Topic Model"),
                                actionButton("debug_button", "Enter R Code Browser"),
                                hr()
-                               )
+                               ))
 
                   )
   ),
@@ -94,10 +95,10 @@ shinyUI(fluidPage(
                                dataTableOutput("SemDocMatchTable"),
                                plotOutput("SemanticSearchTimePlot")),
                                tabPanel("Keyword Searching",
-                               tags$div(title = "Search for trends over time in key words or phrases. Search words or phrases can be plotted over time. To plot multiple phrases, enter each one individually, then click Plot Search Phrase to add the trend to the plot.",
+                               tags$div(title = "Search for trends over time in key words or phrases. Search words or phrases can be plotted over time. To plot multiple phrases, enter each one individually, then click Plot Search Phrase to add the trend to the plot. To search using multiple phrases, separate phrases by commas. Uses regular expression (Regex) matching logic: https://en.wikipedia.org/wiki/Regular_expression",
                                         h4("Key Word/Phrase Trending", style = "display: inline-block"), tags$span(icon("question-circle", lib = "font-awesome"))),
                                h4(),
-                               textInput(inputId = "keyword_search", label = "Search for Topics Containing Specified Words or Phrases. To Search Using Multiple Phrases, Separate Phrases by Commas. Uses Regex matching logic: https://en.wikipedia.org/wiki/Regular_expression", placeholder = "Keyword search"),
+                               textInput(inputId = "keyword_search", label = "Enter Keywords/Phrases", placeholder = "Keyword search"),
                                htmlOutput("TopicFind"),
                                column(6,actionButton("plot_keyphrase", label = "Plot Search Phrase"),
                                       actionButton("clear_plot_keyphrase", label = "Clear Phrase Plot")),
