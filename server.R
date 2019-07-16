@@ -2467,6 +2467,37 @@ shinyServer(function(input, output, session) {
     closedocs <- topicmodel$Metadata$PMID[order(cosdist)]
     distperc <- cosdist[order(cosdist)]
     
+    #If individual sentences were modeled, get the sentence order from closest match to furthest
+    closesentences = NULL
+    matchsentence = NULL
+    if(!is.null(topicmodel$SentenceTopics$SentenceTopicPolarity)){
+      
+      #Get sentence topic data
+      sentenceanalysis <- topicmodel$SentenceTopics
+      sentencetopics <- sentenceanalysis$SentenceTopicPolarity
+      
+      #Extract topic proportions associated with each sentence
+      #browser()
+      #sel = grep("Topic", colnames(sentencetopics))
+      sentenceprob = as.matrix(sentencetopics[,grep("Topic", colnames(sentencetopics))])
+      
+      #Find the cosine distance between search document and all sentences by topic proportions
+      cosdist <- proxy::dist(x = temp$theta, y = sentenceprob, method = "cosine")
+      
+      #sentenceprob = apply(cbind(1, sentencetopics[,sel]), MARGIN = 1, prod) #THIS IS HACKY SOLUTION TO MAKE SURE PRODUCT WORKS WITH ONLY 1 TOPIC SELECTED. FIX LATER
+      sentenceent = unlist(sentencetopics$entropy)
+      ranksentences = unlist(Map("*", (1-cosdist), sentenceent))
+      
+      #Replace any NA values with 0 and convert to match percent based on highest match calculation result
+      ranksentences[is.na(ranksentences)] = 0
+      ranksentences = round((ranksentences/max(ranksentences))*100,2)
+      
+      #Get sentence order from closest match to furthest
+      closesentences <- order(ranksentences, decreasing = TRUE)
+      matchsentence <- ranksentences[order(ranksentences, decreasing = TRUE)]
+      
+    }
+    
     # #Old cosine distance code that calculates distance between all documents instead of just the required distances to the new document
     # #Find the cosine distance between search document and all existing documents by topic proportions
     # cosdist <- proxy::dist(rbind(temp$theta, topicmodel$TopicModel$theta), method = "cosine")
@@ -2477,7 +2508,11 @@ shinyServer(function(input, output, session) {
     # distperc <- distperc[order(cosdist[1:nrow(topicmodel$TopicModel$theta)])]
     
     
-    return(list("SemanticTopics" = topicvec, "DocumentMatchRank" = closedocs, "DocumentCosDistance" = distperc))
+    return(list("SemanticTopics" = topicvec,
+                "DocumentMatchRank" = closedocs,
+                "DocumentCosDistance" = distperc,
+                "SentenceMatchRank" = closesentences,
+                "SentenceSimilarityScore" = matchsentence))
     
   })
   
@@ -3207,9 +3242,66 @@ shinyServer(function(input, output, session) {
   })
   
   #Organize sentences by relevance and present in live datatable
-  #Update sentence relevance table with search results based on selected topics
   # NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
   proxSentenceTable = dataTableProxy('RelevantSentencesDT')
+  
+  #Update sentence relevance table by semantic search topic
+  observe({
+    
+    # Check to see if table has been initialized:
+    if(tableinitialized$SentenceDT){
+      
+      #Get core static table
+      tmp = tryCatch(SentTableCore()[['CoreTable']], error = function(e) NULL)
+      
+      if(!is.null(tmp)){
+        
+        #Get semantic search topic match vector and document ranking
+        semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
+        
+        isolate({
+          
+          # If something was returned by the semantic search for sentence ranking, update the table
+          if(!is.null(semsearch$SentenceMatchRank)){
+            
+            #Get ranked list of most likely matching sentences
+            closedocs <- semsearch$SentenceMatchRank
+            
+            #Get sentence match percent
+            matchpercent <- semsearch$SentenceSimilarity
+            
+            #Rank items by matching result of distance calculations to sentence position integer list
+            tmp = tmp[closedocs,]
+            
+            #Enter match percentage data
+            tmp$Match.Percent = matchpercent
+            
+            #Replace data in pre-generated datatable object
+            replaceData(proxSentenceTable, tmp)
+            
+          }else{
+            #If no search terms have been entered, return a blank table
+            #Get core static table data
+            tmp = tmp[1,]
+            
+            #Return blank table for rendering
+            tmp[1,] = ""
+            tmp[,ncol(tmp)] = "Enter search terms to return results"
+            
+            replaceData(proxSentenceTable, tmp)
+            
+          }
+          
+          
+        })
+        
+      }
+      
+    }
+    
+  })
+  
+  #Update sentence relevance table with search results based on selected topics
   observe({
     
     # Check to see if table has been initialized:

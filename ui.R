@@ -91,6 +91,9 @@ shinyUI(fluidPage(
                                              placeholder = "Full text document matching works best with large searches. Try typing an entire sentence, paragraph, or pasting the entire contents of a document in this box."),
                                htmlOutput("TopicSemMatch"),
                                dataTableOutput("SemDocMatchTable"),
+                               tags$div(title = "Most relevant sentences are identified using the entropy (information content) of each sentence (based on word count approximation) multiplied by the match percentage.",
+                                        h4("Most Relevant Sentences", style = "display: inline-block"), tags$span(icon("question-circle", lib = "font-awesome"))),
+                               dataTableOutput("RelevantSentencesDT"),
                                plotOutput("SemanticSearchTimePlot")),
                                tabPanel("Keyword Searching",
                                tags$div(title = "Search for trends over time in key words or phrases. Search words or phrases can be plotted over time. To plot multiple phrases, enter each one individually, then click Plot Search Phrase to add the trend to the plot. To search using multiple phrases, separate phrases by commas. Uses regular expression (Regex) matching logic: https://en.wikipedia.org/wiki/Regular_expression",
@@ -127,7 +130,7 @@ shinyUI(fluidPage(
                                tags$div(title = "Most relevant sentences are selected by multiplying all selected topic probabilities with the entropy (information content) of each sentence (based on word count approximation).",
                                         h4("Most Relevant Sentences for Selected Topics", style = "display: inline-block"), tags$span(icon("question-circle", lib = "font-awesome"))),
                                #textOutput("RelevantSentences"), #OBSOLETE, REPLACED BY RelevantSentencesDT
-                               dataTableOutput("RelevantSentencesDT"),
+                               #dataTableOutput("RelevantSentencesDT"),
                                #h4("Article Details"),
                                #verbatimTextOutput("clickedNode"),
                                #h4("Referenced By"),
