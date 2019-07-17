@@ -73,6 +73,8 @@ shinyUI(fluidPage(
                                hr(),
                                numericInput(inputId = "stmtermminpercent", label = "Words Must Be In Min % of Documents", value = 1, min = 0, max = 100),
                                numericInput(inputId = "stmtermmaxpercent", label = "Words Cannot Be In More Than Max % of Documents", value = 99, min = 0, max = 100),
+                               checkboxInput(inputId = "stemwords", label = "Use Word Stemming", value = FALSE),
+                               checkboxInput(inputId = "removenumbers", label = "Remove Numbers", value = TRUE),
                                actionButton("gentopicmodelbutton", label = "Create Topic Model"),
                                actionButton("debug_button", "Enter R Code Browser"),
                                hr()

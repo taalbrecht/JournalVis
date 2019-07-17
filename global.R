@@ -794,52 +794,34 @@ ArticleTopicPolar <- function(stmmod, articlelist, usestem = FALSE) {
   #browser()
   
   library(qdap)
+  library(quanteda)
   
   #Check for proper object class
   if(class(stmmod)!="STM"){
     stop("stmmod must be an STM object")}
   
-  #convert articles to polarity matrix that evaluates each sentence
-  sentdocframe <- data.frame(unlist(articlelist), c(1:length(unlist(articlelist))))
+  #Create sentence corpus
+  sentcorp = tokens(corpus(as.character(unlist(articlelist)), docnames = c(1:length(unlist(articlelist)))), what = "sentence")
+  
+  #Construct data frame with parent article number and associated sentences
+  docnums = rep(1:length(unlist(articlelist)), sapply(sentcorp, length))
+  sentdocframe = data.frame(as.character(sentcorp), docnums)
   colnames(sentdocframe) <- c("doc", "num")
   
-  #Strip numbers out of documents
-  strippednums <- unlist(qdapRegex::rm_number(sentdocframe[,1], extract = TRUE))
-  sentdocframe[,1] <- qdapRegex::rm_number(sentdocframe[,1], replacement = "@NUM@NUM@")
-  
-  #Split sentences
-  sentdocframe <- qdap::sentSplit(sentdocframe, "doc", grouping.var = "num", rm.bracket = FALSE)
-  
-#   #Insert numbers back into sentences. Currently buggy and actually replaces first instance of every single sentence with the first number from the stripping function above
-#   for (i in 1:length(strippednums)){
-#     
-#     sentdocframe$doc <- sub(pattern = "@NUM@NUM@", x = sentdocframe$doc, replacement = strippednums[[i]])
-#     
-#   }
-  
   #Calculate polarity of each sentence
-  sentdocframe <- cbind(sentdocframe, qdap::polarity(sentdocframe[,3], constrain = TRUE)$all)
+  sentdocframe <- cbind(sentdocframe, qdap::polarity(sentdocframe$doc, constrain = TRUE)$all)
   
-  #Perhaps split sentences up and strip punctuation
+  #Reprocess as corpus
   sentencecorpus <- qdap::as.Corpus(text.var = sentdocframe$doc, grouping.var = c(1:nrow(sentdocframe)), demographic.vars = sentdocframe[,c("num", "polarity")])
   sentencecorpus <- as.data.frame(sentencecorpus)
   
+  #Substitute multiword phrase tokens back into corpus
   multdef <- UniqueSub(stmmod$vocab[grep(" ", stmmod$vocab, fixed = TRUE)], sentencecorpus$text)
-  
-  #Asshole changed names of output variables for no reason breaking this code
-  #sentencecorpus <- qdap::as.dtm(multdef$keyeddocs, sentencecorpus$docs)
   sentencecorpus <- qdap::as.dtm(multdef$keyeddocs, sentencecorpus$doc_id)
-  
   colnames(sentencecorpus) <- mgsub(as.character(multdef$keyframe$Key), as.character(multdef$keyframe$OrigString), colnames(sentencecorpus), ignore.case = TRUE)
-  
-  #Original phrase replacer using broken sub_holder function from qdap (randomly loses information)
-  #multdef <- sub_holder(stmmod$vocab[grep(" ", stmmod$vocab, fixed = TRUE)], sentencecorpus$text)
-  #sentencecorpus <- qdap::as.dtm(multdef$output, sentencecorpus$docs)
-  #colnames(sentencecorpus) <- multdef$unhold(colnames(sentencecorpus))
   
   #Generate a matrix that detects for presence of each word in the vocab file of the stm model in each sentence of the polarity matrix.
   #If the word is present, the matrix has the polarity of the sentence, if it is not, it will be NA
-  
   vocabpolar <- matrix(data = NA, nrow = nrow(sentdocframe), ncol = length(stmmod$vocab))
   vocabpolar <- data.frame(vocabpolar)
   colnames(vocabpolar) <- stmmod$vocab
@@ -965,9 +947,6 @@ ArticleTopicPolar <- function(stmmod, articlelist, usestem = FALSE) {
     doctopicwordprob <- t(t(doctopicwordprob)/apply(doctopicwordprob, MARGIN = 2, sum))
     
     #Calculate probability that each sentence belongs to a given topic
-    #sentdocframe[i, topiccols] <- apply(doctopicwordprob, MARGIN = 1, function(x, polarvec) sum(x*polarvec, na.rm = TRUE), polarvec = vocabpolar[i,])
-    #sentdocframe[i, topiccols] <- apply(t(doctopicwordprob)*as.matrix(vocabpolar)[i,], MARGIN = 2, sum, na.rm = TRUE)
-    #Faster version below, slower version above that included as.matrix which was moved out of the loop to improve speed
     sentdocframe[i, topiccols] <- apply(t(doctopicwordprob)*vocabpolarmatrix[i,], MARGIN = 2, sum, na.rm = TRUE)
     
   }

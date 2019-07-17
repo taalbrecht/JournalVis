@@ -1838,9 +1838,6 @@ shinyServer(function(input, output, session) {
   #   #Perform text cluster grouping of articles
   CreateTopicModel <- reactive({
     
-    #Get document details
-    details <- FilterDetail()
-    
     ##Second option using stm (can expand to model topics by year or other meta data later, also much faster. Must set working directory to C directory for "Spectral" method to work)
     library(qdap)
     library(stm)
@@ -1851,384 +1848,390 @@ shinyServer(function(input, output, session) {
     
     #If the generate model button is pressed, create a new topic model
     if(input$gentopicmodelbutton > 0){
-      #if(is.null(LoadModel()[["TopicModelLoad"]]) | (input$database != "Load Model")){
-      
+    #if(is.null(LoadModel()[["TopicModelLoad"]]) | (input$database != "Load Model")){
+    
       #Isolate internal code to prevent updates where the button has not been pressed
       isolate({
-        
-        #Process abstract text to stm text object. Includes control objects, including number removal, punctuation removal, lowercase, and stemming
-        #metadata should have unique document ID that is used in other charts as first column
-        meta <- data.frame(details$PMID, details$year)
-        colnames(meta) <- c("PMID", "year")
-        
-        
-        #Aggressively strip the article text, removing all non-letter items due to bugs in stm and tm (based on likely bug in removePunctuation function in tm package) not properly removing punctuation for trademark symbol anymore
-        details$abstractonlyletters <- lapply(details$abstract, function(x) gsub("[^a-zA-Z ]"," ", x))
-        
-        #disable database polling search buttons using shinyjs before intense computation steps below
-        disable("summary_search")
-        disable("detailed_search")
-        disable("link_search")
-        
-        
-        #####################################################
-        #     temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
-        #     
-        #     #Process abstract details into format for stm document preparation
-        #     meta<-temp$meta
-        #     vocab<-temp$vocab
-        #     docs<-temp$documents
-        #     
-        #     #Prep document for stm modeling. Removes infrequent and too frequent terms and sparse documents
-        #     out <- prepDocuments(docs, vocab, meta)
-        #     docs<-out$documents
-        #     vocab<-out$vocab
-        #     meta <-out$meta
-        #     
-        #     #Create vector of document numbers that were not removed during text processing:
-        #     usedocs <- as.integer(names(docs))
-        #     
-        #     #Alternate loop to implement variable length phrases using ToPMine
-        #     library(tm)
-        #     
-        #     #Strip carriage return characters and replace with end of sentence. Write file to directory containing ToPMine
-        #     writeLines(gsub("\n", ". ", details$abstract[usedocs]), "C:/PDFtoText/ToPMine/topicalPhrases/rawFiles/mod.txt")
-        #     
-        #     currentwd <- getwd()
-        #     
-        #     setwd("C:/PDFtoText/ToPMine/topicalPhrases/")
-        #     system("C:/PDFtoText/ToPMine/topicalPhrases/win_run.bat", wait = TRUE)
-        #     
-        #     setwd(currentwd)
-        #     
-        #     multiword <- ToPMinetoDTM("C:/PDFtoText/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt")
-        #     
-        #     multiword <- readCorpus(multiword, type = "dtm")
-        #     docs <- multiword$documents
-        #     vocab <- multiword$vocab
-        #     
-        #     #Set working directory to C: temp to ensure write permission is allowed for init.type "Spectral" in stm function below
-        #     setwd("C:/temp")
-        
-        #Look for TopMine in installation directory for JournalVis and make sure multiword use is selected
-        
-        
-        if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) & (input$usemultiword == "Yes")){
-          
-          currentwd <- getwd()
-          
-          #Create subfolder to write raw data to for ToPMine if it does not exist
-          if (file.exists(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/"))){
-          } else {
-            dir.create(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")))
-            
-          }
-          
-          #Write raw text for ToPMine phrase identification
-          #writeLines(gsub("\n", ". ", details$abstract), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
-          #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
-          writeLines(gsub("\n", ". ", details$abstractonlyletters), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
-          
-          #Run ToPMine phrase identification
-          setwd(paste0(currentwd,"/ToPMine/topicalPhrases/"))
-          system(paste0(currentwd,"/ToPMine/topicalPhrases/win_run.bat"), wait = TRUE)
-          
-          
-          ##Read ToPMine files back into R - OLD method to get entire corpus
-          #multiword <- ToPMinetoDTM(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
-          #multiword <- readCorpus(multiword, type = "dtm")
-          ##Identify all multi-word phrases identified by TopMine and sort by number of characters (large to small) and create dataframe with replacement token
-          #phrases <- multiword$vocab[grep(" ", multiword$vocab, fixed = TRUE)]
-          
-          #Extract only multiword phrases produced by topmine
-          phrases = ToPMineExtractMultiword(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
-          
-          #Delete temporary directories used by ToPMine
-          unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")), recursive = TRUE)
-          unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset/")), recursive = TRUE)
-          unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/")), recursive = TRUE)
-          
-          #Set directory back to JournalVis working directory
-          setwd(currentwd)
-          
-          #Sort phrases from largest to smallest
-          phrases <- phrases[order(nchar(phrases), decreasing = TRUE)]
-          
-          # # ##Moved to TM specific use below
-          # #Define null vector to start in case no phrases identified
-          # placeholder <- c()
-          # 
-          # if(length(phrases) > 0){
-          # 
-          # placeholder <-  apply(expand.grid(lapply(1:max(2,ceiling(log(length(phrases), base = 26))), function(i) letters))[1:length(phrases),], MARGIN = 1, paste0, collapse = "")
-          # placeholder <- paste0("phrasefindqqxzqcvx", placeholder,"phrasefind")
-          # 
-          # }
-          # 
-          # #Replace multiword phrase instances. Add leading and trailing space to make sure they don't get combined with other words
-          # #multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstract, ignore.case = TRUE, leadspace = TRUE, trailspace = TRUE)
-          # multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstractonlyletters, leadspace = TRUE, trailspace = TRUE)
-          # 
-          # ##Moved to TM specific use below
-          # #Get integer position of remaining non-zero length documents
-          # usedocs <- which(nchar(multdef) > 0)
-          # 
-          # #Process resultant text in preparation for STM/LDA modeling
-          # temp <- textProcessor(documents = multdef[usedocs], metadata = meta[usedocs,],  stem = FALSE)
-          
-          
-        }else{
-          
-          ##Moved to TM specific use section below
-          # #If TopMine is not installed, process corpus as single word tokens:
-          # 
-          # #Get integer position of remaining non-zero length documents
-          # usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
-          # 
-          # #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
-          # #temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
-          # #Process resultant text in preparation for STM/LDA modeling
-          # temp <- textProcessor(documents = details$abstractonlyletters[usedocs], metadata = meta[usedocs,],  stem = FALSE)
-        }
-        
-        #Determine if older tm package or quanteda package should be used for preprocessing.
-        #Note: tm package use soon to be deprecated since it is inferior
-        if(usequanteda){
-          #Use quanteda package processing (doesn't support multiword tokens yet)
-          #MIGHT NOT BE NECESSARY USING QUANTEDA. Get integer position of remaining non-zero length documents
-          #usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
-          
-          #########################################################
-          #Quanteda prototype section
-          
-          #Create corpus
-          quantcorp = corpus(as.character(details$abstract), docnames = c(1:length(details$abstract)), docvars = meta)
-          
-          #If multi-word phrases exist, tokenize using them
-          if(exists("phrases")){
-            
-            #Tokenize without removing anything to allow for multiword phrase finding
-            quanttok = tokens(x = quantcorp)
-            
-            #Convert multi-word tokens to underscore joined tokens
-            #NOTE: Investigate ways to up since this is fairly slow (takes approx 30 minutes on SOP dataset, but still faster than older way shown below in tm specific implementation)
-            quanttok = tokens_compound(quanttok, pattern = phrase(as.character(phrases)))
-            
-            #Remove extraneous items from tokens
-            quanttok = tokens(x = quanttok,
-                              remove_numbers = TRUE,
-                              remove_punct = TRUE,
-                              remove_symbols = TRUE,
-                              remove_separators = TRUE)
-            
-            
-          }else{
-            
-            #Tokenize while removing many items without multiword phrases
-            quanttok = tokens(x = quantcorp,
-                              remove_numbers = TRUE,
-                              remove_punct = TRUE,
-                              remove_symbols = TRUE,
-                              remove_separators = TRUE)
-          }
-          
-          #Remove stopwords
-          quanttok = tokens_remove(quanttok, stopwords())
-          
-          #Remove tokens that are less than 3 characters
-          quanttok = tokens_remove(quanttok, min_nchar = 3, max_nchar = 100000)
-          
-          ##Define token equivalence (define synonyms). need to do more research on how to use
-          #tokens_lookup(...)
-          
-          #Create dfm (much quicker with tokens vs. corpus)
-          quantdfm = dfm(quanttok, tolower = TRUE, stem = FALSE)
-          
-          #Trim out too frequent or too infrequent words based on proportion of documents they appear in
-          quantdfm = dfm_trim(quantdfm, min_docfreq = input$stmtermminpercent/100, max_docfreq = input$stmtermmaxpercent/100, docfreq_type = "prop")
-          
-          #Convert to stm format
-          out = convert(quantdfm, to = "stm")
-          
-          #Extract docs, vocab, and meta for stm creation
-          docs<-out$documents
-          vocab<-out$vocab
-          meta <-out$meta
-          #Revert multiword underscore splits in vocab back to spaces
-          vocab = gsub(pattern = "_", replacement = " ", x = vocab, fixed = TRUE)
-          
-          #Reduce usedocs vector to abstract indices of document numbers that were not removed during text processing or that were not removed due to being zero length documents:
-          #Document numbers not removed by textProcessor
-          usedocs <- as.integer(names(docs))
-          
-          #Build stm model
-          #abstractstm = stm(documents = stmdfm$documents, vocab = stmdfm$vocab, K = ceiling(sqrt(length(stmdfm$documents))))
-          
-          
-          #Find multi-word tokens (quite slow, topminer better)
-          #textstat_collocations(quanttok)
-          
-        }else{
-          #Use tm package processing
-          
-          #Initialize tm textprocessor using multiword tokens if they exist
-          if(exists("phrases")){
-            
-            #Define null vector to start in case no phrases identified
-            placeholder <- c()
-            
-            if(length(phrases) > 0){
-              
-              placeholder <-  apply(expand.grid(lapply(1:max(2,ceiling(log(length(phrases), base = 26))), function(i) letters))[1:length(phrases),], MARGIN = 1, paste0, collapse = "")
-              placeholder <- paste0("phrasefindqqxzqcvx", placeholder,"phrasefind")
-              
-            }
-            
-            #Replace multiword phrase instances. Add leading and trailing space to make sure they don't get combined with other words
-            #multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstract, ignore.case = TRUE, leadspace = TRUE, trailspace = TRUE)
-            multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstractonlyletters, leadspace = TRUE, trailspace = TRUE)
-            
-            #Get integer position of remaining non-zero length documents
-            usedocs <- which(nchar(multdef) > 0)
-            
-            #Process resultant text in preparation for STM/LDA modeling
-            temp <- textProcessor(documents = multdef[usedocs], metadata = meta[usedocs,],  stem = FALSE)
-            
-            
-            
-          }else{
-            #If multiword tokens do not exist, use standard text processor
-            #Get integer position of remaining non-zero length documents
-            usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
-            
-            #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
-            #temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
-            #Process resultant text in preparation for STM/LDA modeling
-            temp <- textProcessor(documents = details$abstractonlyletters[usedocs], metadata = meta[usedocs,],  stem = FALSE)
-            
-          }
-          
-          #Proceed with remaining document prep for stm modeling
-          #Process abstract details into format for stm document preparation
-          meta<-temp$meta
-          vocab<-temp$vocab
-          docs<-temp$documents
-          
-          #Prep document for stm modeling. Removes infrequent and too frequent terms and sparse documents
-          out <- prepDocuments(docs, vocab, meta,
-                               lower.thresh = ceiling(input$stmtermminpercent*length(docs)/100),
-                               upper.thresh = ceiling(input$stmtermmaxpercent*length(docs)/100))
-          docs<-out$documents
-          vocab<-out$vocab
-          meta <-out$meta
-          
-          #Reduce usedocs vector to abstract indices of document numbers that were not removed during text processing or that were not removed due to being zero length documents:
-          #Document numbers not removed by textProcessor
-          usedocs <- usedocs[as.integer(names(docs))]
-          
-          
-          if(!usequanteda){
-            #tm package multi-word reversion. Need version for quanteda
-            #Revert multi-word placeholders back to original multi-word phrases if TopMine process was successful
-            if(exists("multdef")){
-              
-              vocab <- mgsub(as.character(placeholder), as.character(phrases), vocab)
-              
-            }
-          }
-          
-          
-        }
-        
-        #Calculate topics. Use "Spectral" initialization to allow for automatic topic number selection if number of words is less than 10000, otherwise use LDA initialization
-        
-        #Set working directory to C: temp to ensure write permission is allowed for init.type "Spectral" in stm function below
-        currentwd <- getwd()
-        setwd("C:/temp")
-        
-        #Model topics including document year as factor if there are more than 1 years present
-        if(length(unique(meta$year)) > 1){
-          abstractstm <- stm(docs, vocab, K = ceiling(sqrt(length(docs))), init.type = "Spectral", data=meta, prevalence = ~year)
-        }else{
-          abstractstm <- stm(docs, vocab, K = ceiling(sqrt(length(docs))), init.type = "Spectral", data=meta)
-        }
-        
-        
-        #Return working directory back to original setting
-        setwd(currentwd)
-        
-        #Create topic JSON array for LDAvis visualization:
-        
-        topicPCAJSON <- TopicStmPCAJSON(abstractstm, docs = docs)
-        
-        #Create matrix of topic proportion by document sorted from most frequently represented topic to least frequently
-        #Row name is document ID
-        #Column name is topic ID
-        
-        doctopic <- abstractstm$theta
-        rownames(doctopic) <- as.character(meta[,1])
-        colnames(doctopic) <- paste("Topic", seq(1:ncol(doctopic)))
-        #doctopic <- doctopic[,order(colSums(doctopic), decreasing = TRUE)]
-        
-        #toLDAvis(abstractstm, docs = docs)
-        
-        #Generate simple force directed graph of topic relationships
-        #topiccorrelate <- topicCorr(abstractstm, method = "huge")
-        #look at plot.topicCorr method to see how to get edges from the topicCorr output
-        
-        #Create graph using LDAvis PCA layout with topiccorrelate edges for connections
-        #Implement LDAvis keyword highlights and add FREX and Lift keywords as tooltips
-        #On click, highlight article graph with color spectrum from saturated to empty depending on how closely each article is associated with the topic
-        
-        #Code to get article polarity
-        
-        if(input$usesentenceanalysis == "Yes"){
-          #browser()
-          #Note, still buggy where if there are no multiword tokens (tokens with spaces) or numbers in corpus, will crash
-          polartopics <- ArticleTopicPolar(stmmod = abstractstm, articlelist = details$abstract[usedocs], usestem = FALSE)
-          
-        }else{polartopics <- list()}
-        
-        
-        #   #Temp code to get thoughts (articles) for specific topic
-        #   findThoughts(abstractstm, texts = details$abstract[as.numeric(names(temp$documents))], topic = x)
-        #   
-        #   #Temp code to get topic keywords
-        #   labelTopics(abstractstm, topics = x)
-        
-        #enable database polling search buttons
-        enable("summary_search")
-        enable("detailed_search")
-        enable("link_search")
-        
-      })
       
+        #Get document details
+        details <- FilterDetail()
+        
+    #Process abstract text to stm text object. Includes control objects, including number removal, punctuation removal, lowercase, and stemming
+    #metadata should have unique document ID that is used in other charts as first column
+    meta <- data.frame(details$PMID, details$year)
+    colnames(meta) <- c("PMID", "year")
+    
+    
+    #Aggressively strip the article text, removing all non-letter items due to bugs in stm and tm (based on likely bug in removePunctuation function in tm package) not properly removing punctuation for trademark symbol anymore
+    details$abstractonlyletters <- lapply(details$abstract, function(x) gsub("[^a-zA-Z ]"," ", x))
+    
+    #disable database polling search buttons using shinyjs before intense computation steps below
+    disable("summary_search")
+    disable("detailed_search")
+    disable("link_search")
+    
+    
+    #####################################################
+#     temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
+#     
+#     #Process abstract details into format for stm document preparation
+#     meta<-temp$meta
+#     vocab<-temp$vocab
+#     docs<-temp$documents
+#     
+#     #Prep document for stm modeling. Removes infrequent and too frequent terms and sparse documents
+#     out <- prepDocuments(docs, vocab, meta)
+#     docs<-out$documents
+#     vocab<-out$vocab
+#     meta <-out$meta
+#     
+#     #Create vector of document numbers that were not removed during text processing:
+#     usedocs <- as.integer(names(docs))
+#     
+#     #Alternate loop to implement variable length phrases using ToPMine
+#     library(tm)
+#     
+#     #Strip carriage return characters and replace with end of sentence. Write file to directory containing ToPMine
+#     writeLines(gsub("\n", ". ", details$abstract[usedocs]), "C:/PDFtoText/ToPMine/topicalPhrases/rawFiles/mod.txt")
+#     
+#     currentwd <- getwd()
+#     
+#     setwd("C:/PDFtoText/ToPMine/topicalPhrases/")
+#     system("C:/PDFtoText/ToPMine/topicalPhrases/win_run.bat", wait = TRUE)
+#     
+#     setwd(currentwd)
+#     
+#     multiword <- ToPMinetoDTM("C:/PDFtoText/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt")
+#     
+#     multiword <- readCorpus(multiword, type = "dtm")
+#     docs <- multiword$documents
+#     vocab <- multiword$vocab
+#     
+#     #Set working directory to C: temp to ensure write permission is allowed for init.type "Spectral" in stm function below
+#     setwd("C:/temp")
+    
+#Look for TopMine in installation directory for JournalVis and make sure multiword use is selected
+    
+     
+if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) & (input$usemultiword == "Yes")){
+  
+  currentwd <- getwd()
+  
+    #Create subfolder to write raw data to for ToPMine if it does not exist
+    if (file.exists(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/"))){
+    } else {
+      dir.create(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")))
+      
+    }
+    
+    #Write raw text for ToPMine phrase identification
+    writeLines(gsub("\n", ". ", details$abstract), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
+    ##Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
+    #writeLines(gsub("\n", ". ", details$abstractonlyletters), paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/mod.txt"))
+    
+    #Run ToPMine phrase identification
+    setwd(paste0(currentwd,"/ToPMine/topicalPhrases/"))
+    system(paste0(currentwd,"/ToPMine/topicalPhrases/win_run.bat"), wait = TRUE)
+    
+    
+    ##Read ToPMine files back into R - OLD method to get entire corpus
+    #multiword <- ToPMinetoDTM(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
+    #multiword <- readCorpus(multiword, type = "dtm")
+    ##Identify all multi-word phrases identified by TopMine and sort by number of characters (large to small) and create dataframe with replacement token
+    #phrases <- multiword$vocab[grep(" ", multiword$vocab, fixed = TRUE)]
+    
+    #Extract only multiword phrases produced by topmine
+    phrases = ToPMineExtractMultiword(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/input_wordTraining.txt"))
+    
+    #Delete temporary directories used by ToPMine
+    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/rawFiles/")), recursive = TRUE)
+    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset/")), recursive = TRUE)
+    unlink(file.path(paste0(currentwd,"/ToPMine/topicalPhrases/TopicalPhrases/input_dataset_output/")), recursive = TRUE)
+    
+    #Set directory back to JournalVis working directory
+    setwd(currentwd)
+    
+    #Sort phrases from largest to smallest
+    phrases <- phrases[order(nchar(phrases), decreasing = TRUE)]
+    
+    # # ##Moved to TM specific use below
+    # #Define null vector to start in case no phrases identified
+    # placeholder <- c()
+    # 
+    # if(length(phrases) > 0){
+    # 
+    # placeholder <-  apply(expand.grid(lapply(1:max(2,ceiling(log(length(phrases), base = 26))), function(i) letters))[1:length(phrases),], MARGIN = 1, paste0, collapse = "")
+    # placeholder <- paste0("phrasefindqqxzqcvx", placeholder,"phrasefind")
+    # 
+    # }
+    # 
+    # #Replace multiword phrase instances. Add leading and trailing space to make sure they don't get combined with other words
+    # #multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstract, ignore.case = TRUE, leadspace = TRUE, trailspace = TRUE)
+    # multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstractonlyletters, leadspace = TRUE, trailspace = TRUE)
+    # 
+    # ##Moved to TM specific use below
+    # #Get integer position of remaining non-zero length documents
+    # usedocs <- which(nchar(multdef) > 0)
+    # 
+    # #Process resultant text in preparation for STM/LDA modeling
+    # temp <- textProcessor(documents = multdef[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+    
+
+}else{
+  
+  ##Moved to TM specific use section below
+  # #If TopMine is not installed, process corpus as single word tokens:
+  # 
+  # #Get integer position of remaining non-zero length documents
+  # usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
+  # 
+  # #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
+  # #temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
+  # #Process resultant text in preparation for STM/LDA modeling
+  # temp <- textProcessor(documents = details$abstractonlyletters[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+}
+    
+    #Determine if older tm package or quanteda package should be used for preprocessing.
+    #Note: tm package use soon to be deprecated since it is inferior
+    if(usequanteda){
+      #Use quanteda package processing (doesn't support multiword tokens yet)
+      #MIGHT NOT BE NECESSARY USING QUANTEDA. Get integer position of remaining non-zero length documents
+      #usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
+      
+      #########################################################
+      #Quanteda prototype section
+      
+      #Create corpus
+      quantcorp = corpus(as.character(details$abstract), docnames = c(1:length(details$abstract)), docvars = meta)
+      
+      #If multi-word phrases exist, tokenize using them
+      if(exists("phrases")){
+        
+        #Tokenize without removing anything to allow for multiword phrase finding
+        quanttok = tokens(x = quantcorp)
+        
+        #Convert multi-word tokens to underscore joined tokens
+        #NOTE: Investigate ways to up since this is fairly slow (takes approx 30 minutes on SOP dataset, but still faster than older way shown below in tm specific implementation)
+        quanttok = tokens_compound(quanttok, pattern = phrase(as.character(phrases)))
+        
+        #Remove extraneous items from tokens
+        quanttok = tokens(x = quanttok,
+                          remove_numbers = input$removenumbers,
+                          remove_punct = TRUE,
+                          remove_symbols = TRUE,
+                          remove_separators = TRUE)
+        
+        
+      }else{
+      
+      #Tokenize while removing many items without multiword phrases
+      quanttok = tokens(x = quantcorp,
+                        remove_numbers = input$removenumbers,
+                        remove_punct = TRUE,
+                        remove_symbols = TRUE,
+                        remove_separators = TRUE)
+      }
+      
+      #Remove stopwords
+      quanttok = tokens_remove(quanttok, stopwords())
+      
+      #Remove tokens that are less than 3 characters
+      quanttok = tokens_remove(quanttok, min_nchar = 3, max_nchar = 100000)
+      
+      ##Define token equivalence (define synonyms). need to do more research on how to use
+      #tokens_lookup(...)
+      
+      #Create dfm (much quicker with tokens vs. corpus)
+      quantdfm = dfm(quanttok, tolower = TRUE, stem = input$stemwords)
+      
+      #Trim out too frequent or too infrequent words based on proportion of documents they appear in
+      quantdfm = dfm_trim(quantdfm,
+                          min_docfreq = input$stmtermminpercent/100,
+                          max_docfreq = input$stmtermmaxpercent/100,
+                          docfreq_type = "prop")
+      
+      #Convert to stm format
+      out = convert(quantdfm, to = "stm")
+      
+      #Extract docs, vocab, and meta for stm creation
+      docs<-out$documents
+      vocab<-out$vocab
+      meta <-out$meta
+      #Revert multiword underscore splits in vocab back to spaces
+      vocab = gsub(pattern = "_", replacement = " ", x = vocab, fixed = TRUE)
+      
+      #Reduce usedocs vector to abstract indices of document numbers that were not removed during text processing or that were not removed due to being zero length documents:
+      #Document numbers not removed by textProcessor
+      usedocs <- as.integer(names(docs))
+      
+      #Build stm model
+      #abstractstm = stm(documents = stmdfm$documents, vocab = stmdfm$vocab, K = ceiling(sqrt(length(stmdfm$documents))))
+      
+      
+      #Find multi-word tokens (quite slow, topminer better)
+      #textstat_collocations(quanttok)
+      
+    }else{
+      #Use tm package processing
+      
+      #Initialize tm textprocessor using multiword tokens if they exist
+      if(exists("phrases")){
+        
+        #Define null vector to start in case no phrases identified
+        placeholder <- c()
+        
+        if(length(phrases) > 0){
+          
+          placeholder <-  apply(expand.grid(lapply(1:max(2,ceiling(log(length(phrases), base = 26))), function(i) letters))[1:length(phrases),], MARGIN = 1, paste0, collapse = "")
+          placeholder <- paste0("phrasefindqqxzqcvx", placeholder,"phrasefind")
+          
+        }
+        
+        #Replace multiword phrase instances. Add leading and trailing space to make sure they don't get combined with other words
+        #multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstract, ignore.case = TRUE, leadspace = TRUE, trailspace = TRUE)
+        multdef <- mgsub(as.character(phrases), as.character(placeholder), details$abstractonlyletters, leadspace = TRUE, trailspace = TRUE)
+        
+        #Get integer position of remaining non-zero length documents
+        usedocs <- which(nchar(multdef) > 0)
+        
+        #Process resultant text in preparation for STM/LDA modeling
+        temp <- textProcessor(documents = multdef[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+        
+        
+        
+      }else{
+        #If multiword tokens do not exist, use standard text processor
+        #Get integer position of remaining non-zero length documents
+        usedocs <- which(sapply(details$abstractonlyletters, nchar) > 0)
+        
+        #Had to switch to abstract with all non-letters stripped due to how tm package removePunctuation was broken by update
+        #temp <- textProcessor(documents = details$abstract, metadata = meta,  stem = FALSE)
+        #Process resultant text in preparation for STM/LDA modeling
+        temp <- textProcessor(documents = details$abstractonlyletters[usedocs], metadata = meta[usedocs,],  stem = FALSE)
+        
+      }
+      
+      #Proceed with remaining document prep for stm modeling
+      #Process abstract details into format for stm document preparation
+      meta<-temp$meta
+      vocab<-temp$vocab
+      docs<-temp$documents
+      
+      #Prep document for stm modeling. Removes infrequent and too frequent terms and sparse documents
+      out <- prepDocuments(docs, vocab, meta,
+                           lower.thresh = ceiling(input$stmtermminpercent*length(docs)/100),
+                           upper.thresh = ceiling(input$stmtermmaxpercent*length(docs)/100))
+      docs<-out$documents
+      vocab<-out$vocab
+      meta <-out$meta
+      
+      #Reduce usedocs vector to abstract indices of document numbers that were not removed during text processing or that were not removed due to being zero length documents:
+      #Document numbers not removed by textProcessor
+      usedocs <- usedocs[as.integer(names(docs))]
+      
+      
+      if(!usequanteda){
+      #tm package multi-word reversion. Need version for quanteda
+      #Revert multi-word placeholders back to original multi-word phrases if TopMine process was successful
+      if(exists("multdef")){
+        
+        vocab <- mgsub(as.character(placeholder), as.character(phrases), vocab)
+        
+      }
+      }
+      
+      
+    }
+    
+    #Calculate topics. Use "Spectral" initialization to allow for automatic topic number selection if number of words is less than 10000, otherwise use LDA initialization
+    
+    #Set working directory to C: temp to ensure write permission is allowed for init.type "Spectral" in stm function below
+    currentwd <- getwd()
+    setwd("C:/temp")
+    
+    #Model topics including document year as factor if there are more than 1 years present
+    if(length(unique(meta$year)) > 1){
+      abstractstm <- stm(docs, vocab, K = ceiling(sqrt(length(docs))), init.type = "Spectral", data=meta, prevalence = ~year)
+      }else{
+        abstractstm <- stm(docs, vocab, K = ceiling(sqrt(length(docs))), init.type = "Spectral", data=meta)
+      }
+    
+    
+    #Return working directory back to original setting
+    setwd(currentwd)
+    
+    #Create topic JSON array for LDAvis visualization:
+    
+    topicPCAJSON <- TopicStmPCAJSON(abstractstm, docs = docs)
+    
+    #Create matrix of topic proportion by document sorted from most frequently represented topic to least frequently
+    #Row name is document ID
+    #Column name is topic ID
+    
+    doctopic <- abstractstm$theta
+    rownames(doctopic) <- as.character(meta[,1])
+    colnames(doctopic) <- paste("Topic", seq(1:ncol(doctopic)))
+    #doctopic <- doctopic[,order(colSums(doctopic), decreasing = TRUE)]
+    
+    #toLDAvis(abstractstm, docs = docs)
+
+    #Generate simple force directed graph of topic relationships
+    #topiccorrelate <- topicCorr(abstractstm, method = "huge")
+    #look at plot.topicCorr method to see how to get edges from the topicCorr output
+    
+    #Create graph using LDAvis PCA layout with topiccorrelate edges for connections
+    #Implement LDAvis keyword highlights and add FREX and Lift keywords as tooltips
+    #On click, highlight article graph with color spectrum from saturated to empty depending on how closely each article is associated with the topic
+    
+    #Code to get article polarity
+    
+    if(input$usesentenceanalysis == "Yes"){
+      #browser()
+      #Note, still buggy where if there are no multiword tokens (tokens with spaces) or numbers in corpus, will crash
+      polartopics <- ArticleTopicPolar(stmmod = abstractstm, articlelist = details$abstract[usedocs], usestem = FALSE)
+      
+    }else{polartopics <- list()}
+    
+    
+    #   #Temp code to get thoughts (articles) for specific topic
+    #   findThoughts(abstractstm, texts = details$abstract[as.numeric(names(temp$documents))], topic = x)
+    #   
+    #   #Temp code to get topic keywords
+    #   labelTopics(abstractstm, topics = x)
+    
+    #enable database polling search buttons
+    enable("summary_search")
+    enable("detailed_search")
+    enable("link_search")
+    
+    })
+    
     }
     
     #If a model has been loaded, use the loaded model unless the generate model button has been pressed
     if((input$gentopicmodelbutton == 0) & (!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
-      #if((!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
+    #if((!is.null(LoadModel()[["TopicModelLoad"]])) & (input$database == "Load Model")){
       
       #Isolate internal code to prevent updates where the button has not been pressed
       isolate({
-        
-        #Get loaded data
-        loaddat = LoadModel()
-        
-        #Extract correct elements for output of reactive value
-        abstractstm = loaddat$TopicModelLoad$TopicModel
-        topicPCAJSON = loaddat$TopicModelLoad$TopicPCAJSON
-        meta = loaddat$TopicModelLoad$Metadata
-        doctopic = loaddat$TopicModelLoad$TopicProb
-        polartopics = loaddat$TopicModelLoad$SentenceTopics
-        
+      
+      #Get loaded data
+      loaddat = LoadModel()
+      
+      #Extract correct elements for output of reactive value
+      abstractstm = loaddat$TopicModelLoad$TopicModel
+      topicPCAJSON = loaddat$TopicModelLoad$TopicPCAJSON
+      meta = loaddat$TopicModelLoad$Metadata
+      doctopic = loaddat$TopicModelLoad$TopicProb
+      polartopics = loaddat$TopicModelLoad$SentenceTopics
+    
       })
     }
     
     return(structure(list("TopicModel" = abstractstm, "TopicPCAJSON" = topicPCAJSON, "Metadata" = meta, "TopicProb" = doctopic, "SentenceTopics" = polartopics)))
     
   })
-  
+                                
   #Create core elements for all topic graphs so they do not need to be updated
   #After every UI change since topic graph generation is slow
   TopicGraphsCore <- reactive({
@@ -2349,7 +2352,7 @@ shinyServer(function(input, output, session) {
       
       #Tokenize while removing several undesirable items
       quanttok = tokens(x = quanttok,
-                        remove_numbers = TRUE,
+                        remove_numbers = input$removenumbers,
                         remove_punct = TRUE,
                         remove_symbols = TRUE,
                         remove_separators = TRUE)
@@ -2364,7 +2367,7 @@ shinyServer(function(input, output, session) {
       #tokens_lookup(...)
       
       #Create dfm (much quicker with tokens vs. corpus)
-      quantdfm = dfm(quanttok, tolower = TRUE, stem = FALSE)
+      quantdfm = dfm(quanttok, tolower = TRUE, stem = input$stemwords)
       
       #Convert to stm format
       temp = convert(quantdfm, to = "stm")
