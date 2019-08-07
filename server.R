@@ -2499,12 +2499,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       #Find matching topic blend using regex matching for each query term
       topicprobs <- wordTopicProbs(topicmodel, unlist(searchvect))
       
-      if(is.null(topicprobs$TopicMatchProbability) == FALSE){
-        
-        topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
-        
-      }
-      
     }
     
     
@@ -2843,6 +2837,13 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     #Get topic probabilities from keyword search
     topicprobs = KeywordSearch()
     
+    #Sort topics from largest probability to smallest
+    if(is.null(topicprobs$TopicMatchProbability) == FALSE){
+      
+      topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
+      
+    }
+    
     if(!is.null(topicprobs$TopicMatchProbability)){
     return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
                       paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]), ": ", 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))],4), "%", collapse = "<br>"),
@@ -2875,6 +2876,13 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     
     #Get topic probabilities from keyword search
     topicprobs = KeywordSearch()
+    
+    #Sort topic probabilities from largest to smallest
+    if(is.null(topicprobs$TopicMatchProbability) == FALSE){
+      
+      topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
+      
+    }
     
     
     #Convert into series list for java plotting with rCharts
