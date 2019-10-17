@@ -303,8 +303,11 @@ shinyServer(function(input, output, session) {
     #Get a list of all .RData files
     choicevals <- list.files(pattern = ".RData")
     
-    #Determine which model should be selected based on URL query if provided
+    #Append blank value to start of list to prevent long loading time of unwanted model when app is opened
+    choicevals = c("", choicevals)
     selected = choicevals[1]
+    
+    #Determine which model should be selected based on URL query if provided
     modelURLquery = getQueryString()$model
     if(!is.null(modelURLquery)){
       selected = choicevals[choicevals == modelURLquery][1]
