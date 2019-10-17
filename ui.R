@@ -9,6 +9,8 @@ shinyUI(fluidPage(
   useShinyjs(),
   fluidRow(column(3,
                   sidebarPanel(width = 12,
+                               # conditionalPanel(condition = "!output.showUI",
+                               #                  h4("What is ARES?")),
                                conditionalPanel(condition="output.showUI",
                                                 radioButtons(inputId = "usermode", label = "Select user mode", choices = c("Pre-Loaded", "Basic", "Advanced"), selected = "Pre-Loaded"),
                                conditionalPanel(condition="input.usermode=='Pre-Loaded'",
@@ -61,6 +63,7 @@ shinyUI(fluidPage(
                                radioButtons("usemultiword", "Find Multiword Tokens?", c("Yes", "No"), selected = "Yes"),
                                radioButtons("usesentenceanalysis", "Run Sentence Analysis? (Experimental - Takes a Long Time)", c("Yes", "No"), selected = "No"),
                                hr(),
+                               h4("Save Search and Model Results"),
                                tags$div(title = "Save article list as csv file",
                                         textInput("ArticleSaveName","File Name For Article List:",value="ArticleSaveName")),
                                tags$div(title = "Save article list as csv file",
@@ -71,6 +74,7 @@ shinyUI(fluidPage(
                                tags$div(title = "Save topic model to reload from current state later",
                                         downloadButton("ModelSave","Save Model")),
                                hr(),
+                               h4("Create a New Topic Model"),
                                numericInput(inputId = "stmtermminpercent", label = "Words Must Be In Min % of Documents", value = 1, min = 0, max = 100),
                                numericInput(inputId = "stmtermmaxpercent", label = "Words Cannot Be In More Than Max % of Documents", value = 99, min = 0, max = 100),
                                checkboxInput(inputId = "stemwords", label = "Use Word Stemming", value = FALSE),
@@ -82,7 +86,7 @@ shinyUI(fluidPage(
 
                   )
   ),
-  column(9,navbarPage("Graphical Analysis",
+  column(9,navbarPage("JournalVis: Modeling, trending, and searching documents by topic, not keyword.",
                       tabPanel("Topic Analysis",
                                navbarPage("",
                                tabPanel("Full Text Matching",
@@ -170,7 +174,10 @@ shinyUI(fluidPage(
                                       showOutput("articletypebar", "highcharts")),
                                column(6,
                                       showOutput("keywordbar", "highcharts")
-                               ))
+                               )),
+                      tabPanel("What is JournalVis?",
+                               includeMarkdown("UserGuide/UserGuide.md")
+                               )
   ))
   ))
 )
