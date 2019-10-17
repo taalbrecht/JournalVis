@@ -86,7 +86,7 @@ shinyUI(fluidPage(
 
                   )
   ),
-  column(9,navbarPage("JournalVis: Modeling, trending, and searching documents by topic, not keyword.",
+  column(9,navbarPage("JournalVis",
                       tabPanel("Topic Analysis",
                                navbarPage("",
                                tabPanel("Full Text Matching",
