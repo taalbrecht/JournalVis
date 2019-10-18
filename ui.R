@@ -104,8 +104,9 @@ shinyUI(fluidPage(
                                                                  actionButton("augment_button", label = "Add Augmented Data")),
                                                 hr()),
                                
-                               #Button to enter debugger at any time
-                               actionButton("debug_button", "Enter R Code Browser"),
+                               #Button to enter debugger at any time. Displays if admin=TRUE is passed in URL query string.
+                               conditionalPanel(condition="output.adminUI",
+                                                actionButton("debug_button", "Enter R Code Browser")),
                                hr()
                                ))
 

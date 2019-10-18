@@ -352,6 +352,16 @@ shinyServer(function(input, output, session) {
   })
   outputOptions(output, 'showUI', suspendWhenHidden = FALSE)
   
+  #Output UI for enabling Admin features:
+  output$adminUI <- reactive({
+    adminUI = FALSE
+    if(!is.null(getQueryString()$admin) && getQueryString()$admin == "TRUE"){
+      adminUI = TRUE
+    }
+    adminUI
+  })
+  outputOptions(output, 'adminUI', suspendWhenHidden = FALSE)
+  
   
   ####################################################################
   ######## Reactive Function Section
