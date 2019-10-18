@@ -1273,60 +1273,19 @@ shinyServer(function(input, output, session) {
   #Function to swap fetch functions defined above based on database radio button selected
   DBSwitch <- reactive({
     
-    #disable database polling search buttons
+    #Initialize return structutre with null elements for crash prevention when no data has yet been loaded or when switching databases
+    Summary = NULL
+    Fetch = NULL
+    NodeEdge = NULL
+    
+    
+    #disable database polling search buttons while loading
     disable("summary_search")
     disable("detailed_search")
     disable("link_search")
     
-    if(isolate(input$database == "pubmed")){
-      
-      Summary <- EntrezSummary()
-      Fetch <- EntrezFetch()[["details"]]
-      NodeEdge <- EntrezFetch()[["refstructure"]]
-      
-    }
     
-    if(isolate(input$database == "PLOS")){
-      
-      Summary <- PLOSSummary()
-      Fetch <- PLOSFetch()[["details"]]
-      NodeEdge <- PLOSFetch()[["refstructure"]]
-      
-    }
-    
-    if(isolate(input$database == "aRxiv")){
-      
-      Summary <- ARXIVSummary()
-      Fetch <- ARXIVFetch()[["details"]]
-      NodeEdge <- ARXIVFetch()[["refstructure"]]
-      
-    }
-    
-    if(isolate(input$database == "OPS patents")){
-      
-      Summary <- OPSSummary()
-      Fetch <- OPSFetch()[["details"]]
-      NodeEdge <- OPSFetch()[["refstructure"]]
-      
-    }
-    
-    if(isolate(input$database == "Local Files")){
-      
-      Summary <- LocalSummary()
-      Fetch <- LocalFetch()[["details"]]
-      NodeEdge <- LocalFetch()[["refstructure"]]
-      
-    }
-    
-    if(isolate(input$database == "CSV File")){
-      
-      Summary <- CSVSummary()
-      Fetch <- CSVFetch()[["details"]]
-      NodeEdge <- CSVFetch()[["refstructure"]]
-      
-    }
-    
-    #if(isolate(!is.null(LoadModel()[["DBSwitchLoad"]]))){
+    # When a new model is uploaded, check to see if it should be rendered
     if(isolate(input$database == "Load Model")){
       
       #browser()
@@ -1339,6 +1298,65 @@ shinyServer(function(input, output, session) {
       
     }
     
+    
+    # Only update the online databases when one of the search buttons has been pressed:
+    
+    if (input$summary_search > 0 | input$detailed_search > 0 | input$link_search > 0){
+      
+      isolate({
+        
+        if(input$database == "pubmed"){
+          
+          Summary <- EntrezSummary()
+          Fetch <- EntrezFetch()[["details"]]
+          NodeEdge <- EntrezFetch()[["refstructure"]]
+          
+        }
+        
+        if(input$database == "PLOS"){
+          
+          Summary <- PLOSSummary()
+          Fetch <- PLOSFetch()[["details"]]
+          NodeEdge <- PLOSFetch()[["refstructure"]]
+          
+        }
+        
+        if(input$database == "aRxiv"){
+          
+          Summary <- ARXIVSummary()
+          Fetch <- ARXIVFetch()[["details"]]
+          NodeEdge <- ARXIVFetch()[["refstructure"]]
+          
+        }
+        
+        if(input$database == "OPS patents"){
+          
+          Summary <- OPSSummary()
+          Fetch <- OPSFetch()[["details"]]
+          NodeEdge <- OPSFetch()[["refstructure"]]
+          
+        }
+        
+        if(input$database == "Local Files"){
+          
+          Summary <- LocalSummary()
+          Fetch <- LocalFetch()[["details"]]
+          NodeEdge <- LocalFetch()[["refstructure"]]
+          
+        }
+        
+        if(input$database == "CSV File"){
+          
+          Summary <- CSVSummary()
+          Fetch <- CSVFetch()[["details"]]
+          NodeEdge <- CSVFetch()[["refstructure"]]
+          
+        }
+        
+        
+      })
+    }
+    
     #Loop through reactive variable for augmentation data here
     if(length(reactaugment$newdat) > 0){
       
@@ -1349,15 +1367,14 @@ shinyServer(function(input, output, session) {
       }
       
     }
-    
-    #enable database polling search buttons
+
+    #enable database polling search buttons after loading is complete
     enable("summary_search")
     enable("detailed_search")
     enable("link_search")
     
-    
+        
     return(structure(list("Summary" = Summary, "Fetch" = Fetch, "NodeEdge" = NodeEdge)))
-    
     
   })
   
