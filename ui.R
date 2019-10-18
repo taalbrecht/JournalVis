@@ -15,12 +15,17 @@ shinyUI(fluidPage(
                                                 radioButtons(inputId = "usermode", label = "Select user mode", choices = c("Pre-Loaded", "Basic", "Advanced"), selected = "Pre-Loaded"),
                                conditionalPanel(condition="input.usermode=='Pre-Loaded'",
                                                 uiOutput("ui_preloadmodlist")),
-                               conditionalPanel(condition="input.usermode!='Pre-Loaded'",
+                               conditionalPanel(condition="input.usermode=='Advanced'",
+                                                tags$div(title = "Perform summary search first to find number of articles, then detailed search, then linkage search. Search results for list lengths > 1000 articles are not currently supported",titlePanel(title="New Search")),
+                                                selectInput("database", "Choose Database For Search", c("Load Model", "pubmed", "PLOS", "aRxiv", "OPS patents", "Local Files", "CSV File"), selected = "Load Model")),
+                                                
+                               conditionalPanel(condition="input.usermode=='Basic' || (input.usermode=='Advanced' && input.database=='Load Model')",
                                                 fileInput('saved_model_file', 'Load Existing Model?',
                                                           accept=c('RData'))),
+                               
                                conditionalPanel(condition="input.usermode=='Advanced'",
-                                                tags$div(title = "Perform summary search first to find number of articles, then detailed search, then linkage search. Search results for list lengths > 1000 articles are not currently supported",titlePanel(title="Inputs")),
-                               selectInput("database", "Choose Database For Search", c("Load Model", "pubmed", "PLOS", "aRxiv", "OPS patents", "Local Files", "CSV File"), selected = "Load Model"),
+                               
+                               # UI for local file uploads
                                conditionalPanel(condition="input.database=='Local Files'",
                                                 actionButton("local_filepath", "Select Local File Directory"),
                                                 textOutput("chosenlocalPath"),
@@ -31,56 +36,77 @@ shinyUI(fluidPage(
                                                   "text/csv",
                                                   "text/comma-separated-values,text/plain",
                                                   ".csv"))),
-                               textInput("search_text", "Search Terms (Boolean Operators Accepted)"),
-                               #actionButton("local_filepath", "Select Local File Directory"),
-                               #textOutput("chosenlocalPath"),
-                               #radioButtons("locallinkby", "Choose File Property to Use For Reference Linking", c("None", "Filename"), selected = "None"),
-                               actionButton("summary_search", "Perform Summary Search"),
-                               hr(),
-                               # fileInput("csv_input", label = "Select CSV File", accept = c(
-                               #   "text/csv",
-                               #   "text/comma-separated-values,text/plain",
-                               #   ".csv")),
-                               textOutput("summary_search_results"),
-                               hr(),
-                               actionButton("detailed_search", "Get Detailed Article Information"),
+                               
+                               # UI for database querying. Only display buttons if a model is not being loaded
+                               conditionalPanel(condition="input.database!='Load Model'",
+                                                textInput("search_text", "Search Terms (Boolean Operators Accepted)"),
+                                                actionButton("summary_search", "Perform Summary Search"),
+                                                textOutput("summary_search_results"),
+                                                hr(),
+                                                
+                                                # Only display detailed search button after summary search has been pressed
+                                                conditionalPanel(condition="input.summary_search > 0",
+                                                                 actionButton("detailed_search", "Get Detailed Article Information")),
+                                                hr()),
+                               
+                               # Always display detailed and link search results so that loaded model data is visible even before buttons are pressed
                                textOutput("detailed_search_results"),
-                               hr(),
-                               actionButton("link_search", "Perform Linkage Search"),
-                               actionButton("include_citedby", "Include Articles Citing This Collection"),
-                               actionButton("include_referencedby", "Include Articles Referenced by This Collection"),
                                textOutput("link_search_results"),
+                               
+                               # Linkage search button no longer does anything (linkage search automatically performed with detailed search now)
+                               # To be removed in future release
+                               conditionalPanel(condition="input.detailed_search > 100",
+                                                actionButton("link_search", "Perform Linkage Search")),
+                               
+                               # Buttons to include additional citing and cited articles.
+                               # For implementation in future builds
+                               #actionButton("include_citedby", "Include Articles Citing This Collection"),
+                               #actionButton("include_referencedby", "Include Articles Referenced by This Collection")),
                                hr(),
-                               h4("Augment Data From Additional CSV File"),
-                               fileInput("augment_input", label = "Select CSV File", accept = c(
-                                 "text/csv",
-                                 "text/comma-separated-values,text/plain",
-                                 ".csv")),
-                               uiOutput("ui_augmentkey"),
-                               uiOutput("ui_dbkey"),
-                               uiOutput("ui_augmentnew"),
-                               actionButton("augment_button", label = "Add Augmented Data"),
-                               radioButtons("usemultiword", "Find Multiword Tokens?", c("Yes", "No"), selected = "Yes"),
-                               radioButtons("usesentenceanalysis", "Run Sentence Analysis? (Experimental - Takes a Long Time)", c("Yes", "No"), selected = "No"),
-                               hr(),
-                               h4("Save Search and Model Results"),
-                               tags$div(title = "Save article list as csv file",
-                                        textInput("ArticleSaveName","File Name For Article List:",value="ArticleSaveName")),
-                               tags$div(title = "Save article list as csv file",
-                                        downloadButton("ArticleSave","Save Article List")),
-                               hr(),
-                               tags$div(title = "Save topic model to reload from current state later",
-                                        textInput("model_filename","File Name For Saved Model:",value="ModelSaveName")),
-                               tags$div(title = "Save topic model to reload from current state later",
-                                        downloadButton("ModelSave","Save Model")),
-                               hr(),
-                               h4("Create a New Topic Model"),
-                               numericInput(inputId = "stmtermminpercent", label = "Words Must Be In Min % of Documents", value = 1, min = 0, max = 100),
-                               numericInput(inputId = "stmtermmaxpercent", label = "Words Cannot Be In More Than Max % of Documents", value = 99, min = 0, max = 100),
-                               checkboxInput(inputId = "stemwords", label = "Use Word Stemming", value = FALSE),
-                               checkboxInput(inputId = "removenumbers", label = "Remove Numbers", value = TRUE),
-                               actionButton("gentopicmodelbutton", label = "Create Topic Model"),
-                               actionButton("debug_button", "Enter R Code Browser"),
+                               
+                               # UI for elements that require a document collection to exist before they can be used
+                               conditionalPanel(condition="output.detailed_search_results!= ''",
+                                                
+                                                # UI for creating a topic model
+                                                h4("Create a New Topic Model"),
+                                                radioButtons("usemultiword", "Find Multiword Tokens?", c("Yes", "No"), selected = "Yes"),
+                                                radioButtons("usesentenceanalysis", "Run Sentence Analysis? (Experimental - Takes a Long Time)", c("Yes", "No"), selected = "No"),
+                                                numericInput(inputId = "stmtermminpercent", label = "Words Must Be In Min % of Documents", value = 1, min = 0, max = 100),
+                                                numericInput(inputId = "stmtermmaxpercent", label = "Words Cannot Be In More Than Max % of Documents", value = 99, min = 0, max = 100),
+                                                checkboxInput(inputId = "stemwords", label = "Use Word Stemming", value = FALSE),
+                                                checkboxInput(inputId = "removenumbers", label = "Remove Numbers", value = TRUE),
+                                                actionButton("gentopicmodelbutton", label = "Create Topic Model"),
+                                                hr(),
+                                                
+                                                # UI for saving model building results
+                                                h4("Save Search and Model Results"),
+                                                tags$div(title = "Save article list as csv file",
+                                                         textInput("ArticleSaveName","File Name For Article List:",value="ArticleSaveName")),
+                                                tags$div(title = "Save article list as csv file",
+                                                         downloadButton("ArticleSave","Save Article List")),
+                                                hr(),
+                                                tags$div(title = "Save topic model to reload from current state later",
+                                                         textInput("model_filename","File Name For Saved Model:",value="ModelSaveName")),
+                                                tags$div(title = "Save topic model to reload from current state later",
+                                                         downloadButton("ModelSave","Save Model")),
+                                                hr(),
+                                                
+                                                # UI for augmenting data with a separate CSV file
+                                                h4("Augment Data From Additional CSV File"),
+                                                fileInput("augment_input", label = "Select CSV File", accept = c(
+                                                  "text/csv",
+                                                  "text/comma-separated-values,text/plain",
+                                                  ".csv")),
+                                                uiOutput("ui_augmentkey"),
+                                                uiOutput("ui_dbkey"),
+                                                uiOutput("ui_augmentnew"),
+                                                conditionalPanel(condition="output.ui_augmentkey!=null",
+                                                                 actionButton("augment_button", label = "Add Augmented Data")),
+                                                hr()),
+                               
+                               #Button to enter debugger at any time. Displays if admin=TRUE is passed in URL query string.
+                               conditionalPanel(condition="output.adminUI",
+                                                actionButton("debug_button", "Enter R Code Browser")),
                                hr()
                                ))
 
