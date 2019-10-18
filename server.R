@@ -256,25 +256,48 @@ shinyServer(function(input, output, session) {
   
   output$ui_augmentkey <- renderUI({
     
+    # If a file has not yet been uploaded, don't display the element
+    if (is.null(augmentdat())){
+      
+      return(NULL)
+      
+    }else{
+    
     #Import default model values and get length of formulalist
     choicevals <- c("", colnames(augmentdat()))
     
     selectInput(inputId = "augmentkey", label = "Key to Match In Augmentation Data",
                 choices = choicevals, selected = "")
+    }
     
   })
   
   output$ui_augmentnew <- renderUI({
+    
+    # If a file has not yet been uploaded, don't display the element
+    if (is.null(augmentdat())){
+      
+      return(NULL)
+      
+    }else{
     
     #Get column names from augmentation dataset
     choicevals <- c("", colnames(augmentdat()))
     
     selectInput(inputId = "augmentnew", label = "Data to Merge From Augmentation Data",
                 choices = choicevals, selected = "")
+    }
     
   })
   
   output$ui_dbkey <- renderUI({
+    
+    # If a file has not yet been uploaded, don't display the element
+    if (is.null(augmentdat())){
+      
+      return(NULL)
+      
+    }else{
     
     dbvals = DBSwitch()[["Fetch"]]
     
@@ -283,6 +306,7 @@ shinyServer(function(input, output, session) {
     
     selectInput(inputId = "keymatch", label = "Key to Match in Existing Data",
                 choices = choicevals, selected = "")
+    }
     
   })
   
