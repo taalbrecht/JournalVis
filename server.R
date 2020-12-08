@@ -493,6 +493,9 @@ shinyServer(function(input, output, session) {
       
       authors <- sapply(entfetch@Author , function(x) paste0(x$LastName, ", ", x$ForeName))
       
+      #Construct hyperlink to pubmed database
+      hyperlink <- paste0("http://www.ncbi.nlm.nih.gov/pubmed/", PMID)
+      
       #Construct data to show on hover
       hovertip <- paste0("<b>Title: </b>", title,
                          "<br /><b>Year: </b>", year,
@@ -515,7 +518,12 @@ shinyServer(function(input, output, session) {
       TimesCited <- relations$TimesCited
       
       
-      return(structure(list(details = list("title" = title, "articletype" = articletype, "journal" = journal, "year" = year, "DOI" = DOI, "abstract" = abstract, "keywords" = keywords, "authors" = authors, "PMID" = PMID, "HoverTip" = hovertip, "ClickTip" = clicktip),
+      return(structure(list(details = list("title" = title, "articletype" = articletype,
+                                           "journal" = journal, "year" = year,
+                                           "DOI" = DOI, "abstract" = abstract,
+                                           "keywords" = keywords, "authors" = authors,
+                                           "PMID" = PMID, "hyperlink" = hyperlink,
+                                           "HoverTip" = hovertip, "ClickTip" = clicktip),
                             refstructure = list("CitationFrame" = CitationFrame, "ReferenceList" = ReferenceList, "OutsideCitationFrame" = OutsideCitationFrame, "TimesCited" = TimesCited))))
       
     }else{
