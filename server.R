@@ -2525,12 +2525,24 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     topicvec <- c(temp$theta)
     names(topicvec) <- paste("Topic", c(1:length(topicvec)))
     
+    ##Distance Metrics
     #Find the cosine distance between search document and all existing documents by topic proportions
+    # jsdist <- JensenShannon(temp$theta, topicmodel$TopicModel$theta)
     cosdist <- proxy::dist(x = temp$theta, y = topicmodel$TopicModel$theta, method = "cosine")
+    # emdist <- EarthMoversDistance(temp$theta, t(topicmodel$TopicModel$theta))
+    # browser()
     
-    #Get document order from closest match to furthest
+    #Get document order from closest match to furthest using Jensen Shannon
+    # closedocs <- topicmodel$Metadata$PMID[order(jsdist)]
+    # distperc <- jsdist[order(jsdist)]
+    
+    #Get document order from closest match to furthest using Cosine Distance
     closedocs <- topicmodel$Metadata$PMID[order(cosdist)]
     distperc <- cosdist[order(cosdist)]
+    
+    #Get document order from closest match to furthest using Earth Movers Distance
+    # closedocs <- topicmodel$Metadata$PMID[order(emdist)]
+    # distperc <- emdist[order(emdist)]
     
     # #Old cosine distance code that calculates distance between all documents instead of just the required distances to the new document
     # #Find the cosine distance between search document and all existing documents by topic proportions

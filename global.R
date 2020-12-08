@@ -12,11 +12,36 @@ library(quanteda)
 library(pdftools)
 library(readtext)
 library(msgxtractr)
+library(transport)
 
 #Enable bookmarking via url
 #enableBookmarking(store = "server")
 
 #Custom functions
+
+#Jensen-Shannon divergence
+JensenShannon <- function(query, matrix){
+  p <- query[1,]
+  q <- t(matrix) # transpose matrix
+  m = (p + q)/2
+  KLDp = mapply(KLD, p, m)
+  KLDq = mapply(KLD, p, m)
+  jsd = sqrt(0.5*(KLDp + KLDq))
+  jsd[is.nan(jsd)] <- 0
+  return (jsd)
+}
+
+#Kullback Leibler divergence
+KLD <- function(a,b){
+  sum(a * log(a/b))
+}
+
+#Earth Movers distance
+EarthMoversDistance <- function(query, matrix){
+  matrix <- t(matrix)
+  emdismatrix = apply(matrix, 1,function(i) { wasserstein1d(query, i, p = 1, wa = NULL, wb = NULL)})
+  return(emdismatrix)
+}
 
 CiteListPubmed <- function(elinkxml){
   #Function to return data frame of citations for articles in entrez link xml document.
