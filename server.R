@@ -3043,6 +3043,11 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     #Get core table data
     tmp = DocTableCore()[['CoreTable']]
     
+    #Cut table down to first 200 rows for speed
+    if(nrow(tmp) > 2000){
+      tmp = tmp[c(1:2000),]
+    }
+    
     if(!is.null(tmp)){
       
       #Set reactive flag to TRUE for document table generation
@@ -3078,6 +3083,9 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     # Check to see if table has been initialized:
     if(tableinitialized$DocumentDT){
       
+      print('tableobserve start')
+      print(Sys.time())
+      
       #Get core static table
       tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
       
@@ -3107,6 +3115,11 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
           #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
           rownames(tmp) = NULL
           
+          #Cut table down to first 200 rows for speed
+          if(nrow(tmp) > 2000){
+            tmp = tmp[c(1:2000),]
+          }
+          
           replaceData(proxSemTable, tmp)
           
         }else{
@@ -3129,6 +3142,9 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       })
       
       }
+      
+      print('tableobserve end')
+      print(Sys.time())
       
     }
     
