@@ -2317,30 +2317,53 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   #Create core document table for all document displaying and matching so it does not need to be recreated from scratch every time which takes a long time.
   DocTableCore <- reactive({
     
+    print('DocTableCore start')
+    print(Sys.time())
+    
     #Get abstract list and order by closeness to new document based on topic proportions
     details <- FilterDetail()
+    abstracts = details$abstract
     
-    #Clean invalid characters from abstract that can cause issues
-    abstracts = lapply(details$abstract, clean)
+    print('DocTableCore 1')
+    print(Sys.time())
     
     #Replace zero length abstracts with NA to allow for data frame to be built
     abstracts[lengths(abstracts) == 0] = NA
+    
+    #Trim to appropriate max length # This is critical for speed.
+    abstracts = sapply(abstracts, substr, start = 1, stop = 500)
+    
+    #Clean invalid characters from abstract that can cause issues
+    abstracts = lapply(abstracts, clean)
+    
     abstracts = unlist(abstracts, recursive = FALSE)
     
-    #Trim to appropriate max length
-    #abstracts = sapply(abstracts, substr, start = 1, stop = 1000)
+    print('DocTableCore 2')
+    print(Sys.time())
+    
+    #Trim to appropriate max length # This is critical for speed.
+    # abstracts = sapply(abstracts, substr, start = 1, stop = 500)
     
     #Create data frame of title and abstract ranked by match
     tmp = data.frame(Match = 1, Title = details$title, FullText = abstracts)
+    
+    print('DocTableCore 3')
+    print(Sys.time())
     
     #Add hyperlink to document title if it exists
     if(!is.null(details$hyperlink)){
       tmp$Title = paste0('<a href="',details$hyperlink,'"', "target='_blank'>",details$title,"</a>")
     }
     
+    print('DocTableCore 4')
+    print(Sys.time())
+    
     #Add document IDs as row names for identification and subsequent additional processing as needed
     rownames(tmp) = details$PMID
     
+    print('DocTableCore end')
+    print(Sys.time())
+    # browser() # This is the slow function. Need to re-integrate with ranked results return. Note java table doesn't care about reinitializaton time as long as update is called as below so should not be affected time-wise
     return(list('CoreTable' = tmp))
   })
   
