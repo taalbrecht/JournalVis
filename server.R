@@ -27,6 +27,8 @@ usequanteda = TRUE
 #Set maximum upload file size from fileInput to 500 mb
 options(shiny.maxRequestSize=500*1024^2) 
 
+#Set maximum table results size
+max_table_entries = 2000
 
 shinyServer(function(input, output, session) {
   
@@ -3044,8 +3046,8 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     tmp = DocTableCore()[['CoreTable']]
     
     #Cut table down to first 200 rows for speed
-    if(nrow(tmp) > 2000){
-      tmp = tmp[c(1:2000),]
+    if(nrow(tmp) > max_table_entries){
+      tmp = tmp[c(1:max_table_entries),]
     }
     
     if(!is.null(tmp)){
@@ -3116,8 +3118,8 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
           rownames(tmp) = NULL
           
           #Cut table down to first 200 rows for speed
-          if(nrow(tmp) > 2000){
-            tmp = tmp[c(1:2000),]
+          if(nrow(tmp) > max_table_entries){
+            tmp = tmp[c(1:max_table_entries),]
           }
           
           replaceData(proxSemTable, tmp)
