@@ -1409,6 +1409,14 @@ shinyServer(function(input, output, session) {
       }
       
     }
+    
+    # Prune duplicate records if requested
+    if(input$remove_duplicates){
+      unique_entries = !duplicated(Fetch$abstract)
+      for(i in c(1:length(Fetch))){
+        Fetch[[i]] <- Fetch[[i]][unique_entries]
+      }
+    }
 
     #enable database polling search buttons after loading is complete
     enable("summary_search")

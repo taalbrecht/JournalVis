@@ -53,6 +53,10 @@ shinyUI(fluidPage(
                                textOutput("detailed_search_results"),
                                textOutput("link_search_results"),
                                
+                               # Indicate whether duplicate records should be removed (document body has identical text)
+                               tags$div(title = "Remove duplicate copies of records that contain identical body text.",
+                                        checkboxInput(inputId = "remove_duplicates", label = "Remove duplicate documents", value = TRUE)),
+                               
                                # Linkage search button no longer does anything (linkage search automatically performed with detailed search now)
                                # To be removed in future release
                                conditionalPanel(condition="input.detailed_search > 100",
