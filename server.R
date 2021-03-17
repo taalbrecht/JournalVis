@@ -3034,7 +3034,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   output$SemDocMatchTable <- DT::renderDataTable({
     
     #Get core table data
-    tmp = DocTableCore()[['CoreTable']]
+    tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
     
     if(!is.null(tmp)){
       
@@ -3054,10 +3054,20 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
                         "}")
                     ))))
       
-    }else{
+    }else if(is.null(input$preloadmodsel)){
       
       #Set reactive flag to FALSE for document table generation
       tableinitialized$DocumentDT = FALSE
+      
+      # Return loading message
+      data.frame('Table Status' = c('Loading model...'))
+    }else {
+      
+      #Set reactive flag to FALSE for document table generation
+      tableinitialized$DocumentDT = FALSE
+      
+      # Return loading message
+      data.frame('Table Status' = c('Select, upload, or create a model'))
       
     }
     
