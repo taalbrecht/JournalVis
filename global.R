@@ -1650,7 +1650,7 @@ extracttext <- function(filepath, verbose = FALSE, pdfattachments = TRUE){
   # }
   
   #Read formats covered by readtext package (requires readtext package)
-  if(fileextension %in% c("json", "csv", "tab", "tsv", "html", "xml", "pdf", "odt", "doc", "docx", "rtf")){
+  if(fileextension %in% c("json", "csv", "tab", "tsv", "html", "xml", "pdf", "odt", "doc", "docx", "rtf", "zip")){
     output <- paste(readtext::readtext(filepath)$text, collapse = " ")
   }
   
