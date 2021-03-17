@@ -764,13 +764,16 @@ wordTopicProbs <- function(x, wordlist) {
       
     }
     
-    #Normalize probabilities for each word and escape out of log scale to normal scale. (Each individual word probability normalized to sum to 1 over all topics)
-    sumprobvect <- log(apply(probmat, MARGIN = 2, FUN = function(x) sum(exp(x))))
-    probmat <- exp(scale(probmat, center= sumprobvect, scale = FALSE))
     
-    #Calculate product of probability for each topic
-    probvect <- apply(probmat, MARGIN = 1, FUN = prod)
-    names(probvect) <- paste("Topic", seq(1:length(probvect)))
+    if (length(probmat) != 0){
+      #Normalize probabilities for each word and escape out of log scale to normal scale. (Each individual word probability normalized to sum to 1 over all topics)
+      sumprobvect <- log(apply(probmat, MARGIN = 2, FUN = function(x) sum(exp(x))))
+      probmat <- exp(scale(probmat, center= sumprobvect, scale = FALSE))
+      
+      #Calculate product of probability for each topic
+      probvect <- apply(probmat, MARGIN = 1, FUN = prod)
+      names(probvect) <- paste("Topic", seq(1:length(probvect)))
+    }
     
   }
   
