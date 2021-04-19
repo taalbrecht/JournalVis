@@ -2345,7 +2345,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     # abstracts = sapply(abstracts, substr, start = 1, stop = 500)
     
     #Create data frame of title and abstract ranked by match
-    tmp = data.frame(Match = 1, Title = details$title, FullText = abstracts)
+    tmp = data.frame(Match = 1, Title = details$title, FullText = abstracts, stringsAsFactors = FALSE)
     
     print('DocTableCore 3')
     print(Sys.time())
@@ -3073,6 +3073,8 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   #Update semantic document table with search results to find documents that match document text provided in semantic search
   # NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
   proxSemTable = dataTableProxy('SemDocMatchTable')
+  
+  # Update table when a new search query is executed
   observe({
     
     # Check to see if table has been initialized:
@@ -3107,7 +3109,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
           #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
           rownames(tmp) = NULL
           
-          replaceData(proxSemTable, tmp)
+          replaceData(proxSemTable, tmp, resetPaging = TRUE)
           
         }else{
           #If no search terms have been entered, return a blank table
@@ -3128,6 +3130,93 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
         
       })
       
+      }
+      
+    }
+    
+  })
+  
+  # Get best matching segment of each displayed document in the table using a binary tree search
+  observe({
+    
+    # Check to see if table has been initialized:
+    if(tableinitialized$DocumentDT){
+      
+      # Get raw data
+      details = FilterDetail()
+      topicmodel = CreateTopicModel()
+      
+      #Get core static table
+      tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
+      
+      if(!is.null(tmp)){
+        
+        #Get semantic search topic match vector and document ranking
+        semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
+        
+        #Get current displayed rows of table
+        displayed_rows = input$SemDocMatchTable_rows_current
+        
+        isolate({
+          
+          # If something was returned by the semantic search and if the table exists, update the table
+          if(!is.null(semsearch)){
+            
+            #Sort topic vector from largest to smallest
+            topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
+            
+            #Get ranked list of most likely matching documents
+            closedocs <- semsearch$DocumentMatchRank
+            
+            #Get document match percent
+            distperc <- semsearch$DocumentCosDistance
+            
+            #Rank items by matching result of distance calculations to document ID in row name
+            tmp = tmp[as.character(closedocs),]
+            tmp$Match = round(100*(1 - distperc), digits = 1)
+            
+            # Get best matching segment of each displayed document using a binary tree search
+            if(!is.null(displayed_rows)){
+              print("Firing snippet finder")
+              table_docs_bin = c()
+              for(i in displayed_rows){
+                
+                snippet_results = binary_doc_snippet_search(document = details$abstract[[as.character(closedocs)[i]]],
+                                                            stm_model = topicmodel$TopicModel,
+                                                            target_vector = semsearch$SemanticTopics)
+                table_docs_bin = c(table_docs_bin, snippet_results$BestSnippet)
+              }
+              
+              #Clean invalid characters from abstract that can cause issues with table display and replace currently displayed rows
+              table_docs_bin = sapply(table_docs_bin, clean)
+              tmp$FullText[displayed_rows] = table_docs_bin
+              
+            }
+            
+            #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
+            rownames(tmp) = NULL
+            
+            replaceData(proxSemTable, tmp, resetPaging = FALSE)
+            
+          }else{
+            #If no search terms have been entered, return a blank table
+            #Get core static table data
+            tmp = tmp[1,]
+            
+            #Return blank table for rendering
+            tmp[1,] = ""
+            tmp[,ncol(tmp)] = "Enter search terms to return results"
+            
+            #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
+            rownames(tmp) = NULL
+            
+            replaceData(proxSemTable, tmp)
+            
+          }
+          
+          
+        })
+        
       }
       
     }
