@@ -2324,7 +2324,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     details <- FilterDetail()
     
     #Create data frame of title and abstract ranked by match
-    tmp = data.frame(Match = 1, Title = details$title, FullText = "", stringsAsFactors = FALSE)
+    tmp = data.frame(Match = 1, Title = details$title, Document_Snippet = "", stringsAsFactors = FALSE)
     
     #Add hyperlink to document title if it exists
     if(!is.null(details$hyperlink)){
@@ -3162,7 +3162,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
               
               #Clean invalid characters from abstract that can cause issues with table display and replace currently displayed rows
               table_docs_bin = sapply(table_docs_bin, clean)
-              tmp$FullText[displayed_rows] = table_docs_bin
+              tmp$Document_Snippet[displayed_rows] = table_docs_bin
               
             }
             
