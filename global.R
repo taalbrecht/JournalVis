@@ -1776,3 +1776,190 @@ UniqueSub <- function(phrases, documents){
   return(list(keyeddocs = keyeddocs, keyframe = keyframe))
   
 }
+
+
+score_documents <- function(target_texts, topic_model, remove_numbers=TRUE, stem_words=FALSE){
+
+  #Extract all multi-word tokens from topicmodel vocabulary
+  phrases <- topic_model$vocab[grep(" ", topic_model$vocab, fixed = TRUE)]
+
+  #Order from longest to smallest to make sure longest phrases are replaced with placeholder first to prevent errors
+  phrases <- phrases[order(nchar(phrases), decreasing = TRUE)]
+
+  #Create metadata for new article which should have unique document ID that is used in other charts as first column
+  meta <- data.frame(PMID = paste0("NEWDOC", 1:length(target_texts)), year = max(topic_model$settings$covariates$betaindex))
+
+  #Create corpus from semantic search text field
+  quanttok = corpus(target_texts, docvars = meta)
+
+  #If multi-word phrases exist, tokenize using them
+  if(length(phrases) > 0){
+
+    #Tokenize without removing anything to allow for multiword phrase finding
+    quanttok = tokens(x = quanttok)
+
+    #Convert multi-word tokens to underscore joined tokens
+    #NOTE: Investigate ways to speed up since this is fairly slow (takes approx 30 minutes on SOP dataset, but still faster than older way shown below in tm specific implementation)
+    quanttok = tokens_compound(quanttok, pattern = phrase(as.character(phrases)))
+
+  }
+
+  #Tokenize while removing several undesirable items
+  quanttok = tokens(x = quanttok,
+                    remove_numbers = remove_numbers,
+                    remove_punct = TRUE,
+                    remove_symbols = TRUE,
+                    remove_separators = TRUE)
+
+  #Remove stopwords
+  quanttok = tokens_remove(quanttok, stopwords())
+
+  #Remove tokens that are less than 3 characters
+  quanttok = tokens_remove(quanttok, min_nchar = 3, max_nchar = 100000)
+
+  ##Define token equivalence (define synonyms). need to do more research on how to use
+  #tokens_lookup(...)
+
+  #Create dfm (much quicker with tokens vs. corpus)
+  quantdfm = dfm(quanttok, tolower = TRUE, stem = stem_words)
+
+  #Convert to stm format
+  temp = convert(quantdfm, to = "stm")
+
+  #Revert multiword underscore splits in vocab back to spaces
+  temp$vocab = gsub(pattern = "_", replacement = " ", x = temp$vocab, fixed = TRUE)
+
+  #Align Corpus
+  temp <- alignCorpus(new = temp, old.vocab = topic_model$vocab)
+
+  #Fit the new topic model - may need to update with metadata at some point
+  temp <- fitNewDocuments(model = topic_model, documents = temp$documents)
+
+  #Extract topic probabilities and name them, and order from largest to smallest
+  topicvec <- c(temp$theta)
+  names(topicvec) <- paste("Topic", c(1:length(topicvec)))
+  
+  topicmat = temp$theta
+  colnames(topicmat) = paste("Topic", c(1:ncol(topicmat)))
+  
+  return(topicmat)
+
+}
+
+
+distance_from_target <- function(target_vector, candidate_matrix, method="cosine"){
+  
+  # Reshape the target_vector to an appropriate 
+  if(is.vector(target_vector)){
+    
+    # Try to match by column first
+    if(length(target_vector) == dim(candidate_matrix)[2]){
+      
+      target_vector = matrix(target_vector, nrow = 1)
+      
+    }else{
+      
+      candidate_matrix = t(candidate_matrix)
+      
+    }
+    
+    target_vector = matrix(target_vector, nrow = 1)
+    
+  }
+  
+  #Find the cosine distance between the target vector and the candidate matrix
+  distance_metric = proxy::dist(x = target_vector, y = candidate_matrix, method = method)
+  
+  #Get document order from closest match to furthest
+  closedocs <- order(distance_metric)
+  distperc <- distance_metric[order(distance_metric)]
+  
+  return(list("RankedMatches" = closedocs, "Distance" = distperc))
+  
+}
+
+
+split_doc_into_chunks <- function(input_text, chunk_size = 4, chunk_count = NULL, split_by = 'sentence'){
+  
+  # Split document using specified chunk type
+  sentences = tokens(input_text, what=split_by)[["text1"]]
+  
+  # USE tokens_chunk here instead?
+  
+  if(!is.null(chunk_count)){
+    # If the number of chunks is provided, split into specified number of chunks
+    
+    output = split(sentences, ceiling(chunk_count * seq_along(sentences)/length(sentences)))
+    
+  }else{
+    
+    # Otherwise, split into chunks of a maximum target size.
+    output = split(sentences, ceiling(seq_along(sentences)/chunk_size))
+    
+  }
+  
+  output = sapply(output, function(x) paste(x, collapse = " "))
+  
+  return(output)
+  
+  
+}
+
+
+rank_doc_snippets <- function(document, target_text, stm_model, chunk_size = 4){
+  
+  # Split document into chunks
+  doc_chunks = split_doc_into_chunks(input_text = document, chunk_size = chunk_size)
+  
+  # Score each chunk along with the target text
+  score_matrix = score_documents(target_texts = c(target_text, doc_chunks), topic_model = stm_model)
+  
+  # Calculate distances from target doc and return chunks ordered from closest match to most distant
+  match_results = distance_from_target(score_matrix[1, ], score_matrix[-c(1), ])
+  
+  # Reorder the chunks from closest to most 
+  document_snippets = doc_chunks[match_results$RankedMatches]
+  
+  return(list("RankedDocuments" = document_snippets, "DistanceMetric" = match_results$Distance))
+  
+}
+
+
+binary_doc_snippet_search <- function(document, stm_model, chunk_size = 4, target_text = NULL, target_vector = NULL){
+  
+  # Score the target text if provided
+  if(!is.null(target_text)){
+    
+    target_vector = score_documents(target_texts = target_text, topic_model = stm_model)[1,]
+    
+  }
+  
+  # Split document into sentences
+  sentences = split_doc_into_chunks(input_text = document, chunk_size = 1)
+  
+  # Flag used to determine if splitting should continue
+  continue_splitting = TRUE
+  
+  while(continue_splitting){
+    
+    sentences = split(sentences, ceiling(2 * seq_along(sentences)/length(sentences)))
+    loop_chunks = sapply(sentences, function(x) paste(x, collapse = " "))
+    
+    # Score each chunk along with the target text
+    score_matrix = score_documents(target_texts = loop_chunks, topic_model = stm_model)
+    
+    # Calculate distances from target doc and return chunks ordered from closest match to most distant
+    match_results = distance_from_target(target_vector, score_matrix)
+    
+    # Select the best matching chunk
+    sentences = sentences[[match_results$RankedMatches[1]]]
+    
+    # Stop if the best matching chunk matches length requirements
+    continue_splitting = length(sentences) > chunk_size
+    
+  }
+  
+  # Return the best matching snippet after the target chunk size is reached
+  return(list("BestSnippet" = loop_chunks[[match_results$RankedMatches[1]]], "DistanceMetric" = match_results$Distance[1]))
+  
+}
