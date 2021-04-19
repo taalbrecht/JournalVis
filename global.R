@@ -1925,7 +1925,7 @@ rank_doc_snippets <- function(document, target_text, stm_model, chunk_size = 4){
 }
 
 
-binary_doc_snippet_search <- function(document, stm_model, chunk_size = 4, target_text = NULL, target_vector = NULL){
+binary_doc_snippet_search <- function(document, stm_model, chunk_size = 4, character_size = 500, target_text = NULL, target_vector = NULL){
   
   # Score the target text if provided
   if(!is.null(target_text)){
@@ -1955,7 +1955,7 @@ binary_doc_snippet_search <- function(document, stm_model, chunk_size = 4, targe
     sentences = sentences[[match_results$RankedMatches[1]]]
     
     # Stop if the best matching chunk matches length requirements
-    continue_splitting = length(sentences) > chunk_size
+    continue_splitting = (length(sentences) > chunk_size) & (nchar(loop_chunks[[match_results$RankedMatches[1]]]) > character_size)
     
   }
   
