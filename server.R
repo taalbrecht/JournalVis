@@ -3527,5 +3527,127 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   
   
   
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  #Initialize semantic document matching table
+  output$SemDocBestWordsTable <- renderTable({
+    
+    # Set number of results to show in table (replace with input later)
+    result_count = 5
+    
+    #Get abstract list and order by closeness to new document based on topic proportions
+    details <- FilterDetail()
+    topicmodel <- CreateTopicModel()
+    abstracts = details$abstract
+    
+    #Get core table data
+    tmp = DocTableCore()[['CoreTable']]
+    
+    semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
+    
+    if(!is.null(semsearch)){
+      
+      # browser()
+      
+      #Sort topic vector from largest to smallest
+      topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
+      
+      #Get ranked list of most likely matching documents
+      closedocs <- semsearch$DocumentMatchRank
+      
+      #Get document match percent
+      distperc <- semsearch$DocumentCosDistance
+      
+      print('DocTableCore 1')
+      print(Sys.time())
+      
+      #Replace zero length abstracts with NA to allow for data frame to be built
+      abstracts[lengths(abstracts) == 0] = NA
+      
+      
+      # Cut down to top result_count matches
+      table_docs = abstracts[as.character(closedocs)[1:result_count]]
+      titles = details$title[as.character(closedocs)[1:result_count]]
+      
+      # Get best matching segment of each document to display in results table by scoring all chunks in a document
+      for(i in 1:result_count){
+        
+        # Split document into chunks
+        doc_chunks = split_doc_into_chunks(input_text = table_docs[[i]])
+        
+        # Score each chunk along with the target text
+        score_matrix = score_documents(target_texts = doc_chunks, topic_model = topicmodel$TopicModel)
+        
+        # Calculate distances from target doc and return chunks ordered from closest match to most distant
+        match_results = distance_from_target(semsearch$SemanticTopics, score_matrix)
+        
+        # # Reorder the chunks from closest to most 
+        # document_snippets = doc_chunks[match_results$RankedMatches]
+        
+        table_docs[[i]] = doc_chunks[match_results$RankedMatches[1]]
+        
+      }
+      
+      #Trim to appropriate max length # This is critical for speed.
+      table_docs = sapply(table_docs, substr, start = 1, stop = 1000)
+      
+      #Clean invalid characters from abstract that can cause issues
+      table_docs = lapply(table_docs, clean)
+      
+      table_docs = unlist(table_docs, recursive = FALSE)
+      
+      
+      # Get best matching segment of each document using a binary tree search
+      table_docs_bin = abstracts[as.character(closedocs)[1:result_count]]
+      for(i in 1:result_count){
+        
+        table_docs_bin[[i]] = binary_doc_snippet_search(document = table_docs_bin[[i]],
+                                                        stm_model = topicmodel$TopicModel,
+                                                        target_vector = semsearch$SemanticTopics)$BestSnippet
+        
+      }
+      
+      #Trim to appropriate max length # This is critical for speed.
+      table_docs_bin = sapply(table_docs_bin, substr, start = 1, stop = 1000)
+      
+      #Clean invalid characters from abstract that can cause issues
+      table_docs_bin = lapply(table_docs_bin, clean)
+      
+      table_docs_bin = unlist(table_docs_bin, recursive = FALSE)
+      
+      
+      output = data.frame(Rank=c(1:result_count),
+                          Match = round(100*(1 - distperc[1:result_count]), digits = 1),
+                          Title = titles,
+                          Text = table_docs,
+                          TextBin = table_docs_bin)
+      
+      #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
+      rownames(output) = NULL
+      
+    }else{
+      
+      output = data.frame(" " = "Enter search terms to return results")
+      
+      #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
+      rownames(output) = NULL
+      
+    }
+    
+    return(output)
+    
+  })
+  
+  
+  
+  
 })
 
