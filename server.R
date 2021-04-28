@@ -2896,6 +2896,9 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     # 
     # }
     
+    # Initialize output vector of strings
+    output = ""
+    
     #Get topic probabilities from keyword search
     topicprobs = KeywordSearch()
     
@@ -2907,10 +2910,23 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     }
     
     if(!is.null(topicprobs$TopicMatchProbability)){
-    return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
-                      paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]), ": ", 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))],4), "%", collapse = "<br>"),
-                      "<br/> Words/Phrases Not Found In Any Topics: ", paste(topicprobs$MissingWords, collapse = " "))))
+      
+      output = paste(output, "<b>Most Probable Topic Matches: </b><br>",
+                     paste0(names(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))]), ": ", 100*round(topicprobs$TopicMatchProbability[1:min(5, length(topicprobs$TopicMatchProbability))],4), "%", collapse = "<br>"))
+      
+      # Add missing words to output HTML
+      if (length(topicprobs$MissingWords) > 0){
+        output = paste(output, "<br/><br>", "<br/> Words/Phrases Not Found In Any Topics: ", paste(topicprobs$MissingWords, collapse = " "))
+      }
+      
+    } else {
+      
+      output = paste(output, "No Keywords/Phrase Matches Found in Model")
+      
     }
+    
+    return(HTML(output))
+    
   })
   
   
