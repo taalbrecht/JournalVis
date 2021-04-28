@@ -2955,13 +2955,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     #Get topic probabilities from keyword search
     topicprobs = KeywordSearch()
     
-    #Sort topic probabilities from largest to smallest
-    if(is.null(topicprobs$TopicMatchProbability) == FALSE){
-      
-      topicprobs$TopicMatchProbability <- topicprobs$TopicMatchProbability[order(topicprobs$TopicMatchProbability, decreasing = TRUE)]
-      
-    }
-    
     
     #Convert into series list for java plotting with rCharts
     displaynum <- min(nrow(histdata), 50)
