@@ -3030,7 +3030,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   output$SemDocMatchTable <- DT::renderDataTable({
     
     #Get core table data
-    tmp = DocTableCore()[['CoreTable']]
+    tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
     
     if(!is.null(tmp)){
       
@@ -3050,10 +3050,20 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
                         "}")
                     ))))
       
-    }else{
+    }else if(is.null(input$preloadmodsel)){
       
       #Set reactive flag to FALSE for document table generation
       tableinitialized$DocumentDT = FALSE
+      
+      # Return loading message
+      data.frame('Table Status' = c('Loading model...'))
+    }else {
+      
+      #Set reactive flag to FALSE for document table generation
+      tableinitialized$DocumentDT = FALSE
+      
+      # Return loading message
+      data.frame('Table Status' = c('Select, upload, or create a model'))
       
     }
     
@@ -3062,8 +3072,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   #Update semantic document table with search results to find documents that match document text provided in semantic search
   # NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
   proxSemTable = dataTableProxy('SemDocMatchTable')
-  
-  # Update table when a new search query is executed
   observe({
     
     # Check to see if table has been initialized:
