@@ -1830,10 +1830,10 @@ score_documents <- function(target_texts, topic_model, remove_numbers=TRUE, stem
   temp$vocab = gsub(pattern = "_", replacement = " ", x = temp$vocab, fixed = TRUE)
 
   #Align Corpus
-  temp <- alignCorpus(new = temp, old.vocab = topic_model$vocab)
+  temp <- alignCorpus(new = temp, old.vocab = topic_model$vocab, verbose = FALSE)
 
   #Fit the new topic model - may need to update with metadata at some point
-  temp <- fitNewDocuments(model = topic_model, documents = temp$documents)
+  temp <- fitNewDocuments(model = topic_model, documents = temp$documents, verbose = FALSE)
 
   #Extract topic probabilities and name them, and order from largest to smallest
   topicvec <- c(temp$theta)

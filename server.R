@@ -2512,10 +2512,10 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     # }
     
     #Align Corpus
-    temp <- alignCorpus(new = temp, old.vocab = topicmodel$TopicModel$vocab)
+    temp <- alignCorpus(new = temp, old.vocab = topicmodel$TopicModel$vocab, verbose = FALSE)
     
     #Fit the new topic model - may need to update with metadata at some point
-    temp <- fitNewDocuments(model = topicmodel$TopicModel, documents = temp$documents)
+    temp <- fitNewDocuments(model = topicmodel$TopicModel, documents = temp$documents, verbose = FALSE)
     
     #Extract topic probabilities and name them, and order from largest to smallest
     topicvec <- c(temp$theta)
