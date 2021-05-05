@@ -60,6 +60,7 @@ shinyServer(function(input, output, session) {
   tableinitialized <- reactiveValues()
   tableinitialized$DocumentDT = FALSE
   tableinitialized$DocumentDTSetPage1 = FALSE
+  tableinitialized$DocumentDTPage = 1
   tableinitialized$SentenceDT = FALSE
   
   #Reactive value to contain clicks from bar graphs of key terms to highlight on graph
@@ -2383,6 +2384,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       print('Firing semantic search')
       # Set flag to reset results table page to page 1
       tableinitialized$DocumentDTSetPage1 = TRUE
+      tableinitialized$DocumentDTPage = 1
     })
     
     #Get topic model
@@ -3158,6 +3160,127 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       }
       
     }
+    
+  })
+  
+  # Observers to capture previous and next page buttons for FullTextSearchResults
+  observe({
+    if(input$full_text_prev_page > 0){
+      isolate({
+        if(tableinitialized$DocumentDTPage > 1){
+          tableinitialized$DocumentDTPage = tableinitialized$DocumentDTPage - 1
+        }
+      })
+    }
+  })
+  
+  observe({
+    if(input$full_text_next_page > 0){
+      isolate({
+        # TODO: Populate with max page data
+        if(tableinitialized$DocumentDTPage < 1000){
+          tableinitialized$DocumentDTPage = tableinitialized$DocumentDTPage + 1
+        }
+      })
+    }
+  })
+  
+  # Full text semantic search table. Generated one page at a time for better compatibility with generating most relevant document snippets on the fly
+  output$SemanticSearchResults <- renderDataTable({
+    
+    # Set number of results to show in table (replace with input later)
+    result_count = 5
+    
+    #Get core static table
+    tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
+    
+    if(!is.null(tmp)){
+      
+      # Get raw data
+      details = FilterDetail()
+      topicmodel = CreateTopicModel()
+      
+      #Get semantic search topic match vector and document ranking
+      semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
+      
+      #Get current displayed rows of table
+      displayed_rows = c(1:result_count) + result_count*(tableinitialized$DocumentDTPage - 1)
+      
+      isolate({
+        
+        # If something was returned by the semantic search and if the table exists, update the table
+        if(!is.null(semsearch)){
+          
+          #Sort topic vector from largest to smallest
+          topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
+          
+          #Get ranked list of most likely matching documents
+          closedocs <- semsearch$DocumentMatchRank
+          
+          #Get document match percent
+          distperc <- semsearch$DocumentCosDistance
+          
+          #Rank items by matching result of distance calculations to document ID in row name
+          tmp = tmp[as.character(closedocs),]
+          tmp$Match = round(100*(1 - distperc), digits = 1)
+          
+          # Cut down to displayed rows
+          tmp = tmp[displayed_rows, ]
+          
+          # Get best matching segment of each displayed document using a binary tree search
+          if(!is.null(displayed_rows)){
+            print("Firing snippet finder")
+            table_docs_bin = c()
+            for(i in displayed_rows){
+              
+              snippet_results = binary_doc_snippet_search(document = details$abstract[[as.character(closedocs)[i]]],
+                                                          stm_model = topicmodel$TopicModel,
+                                                          target_vector = semsearch$SemanticTopics)
+              table_docs_bin = c(table_docs_bin, snippet_results$BestSnippet)
+            }
+            
+            #Clean invalid characters from abstract that can cause issues with table display and replace currently displayed rows
+            table_docs_bin = sapply(table_docs_bin, clean)
+            tmp$Document_Snippet = table_docs_bin
+            
+          }
+          
+          #Set rownames to result rankings on current page
+          rownames(tmp) = displayed_rows
+          
+        }else{
+          #If no search terms have been entered, return a blank table
+          #Get core static table data
+          tmp = tmp[1,]
+          
+          #Return blank table for rendering
+          tmp[1,] = ""
+          tmp[,ncol(tmp)] = "Enter search terms to return results"
+          rownames(tmp) = NULL
+          
+        }
+        
+        
+      })
+      
+    }else if(is.null(input$preloadmodsel)){
+      
+      # Return loading message
+      tmp = data.frame('Table Status' = c('Loading model...'))
+    }else {
+      
+      # Return loading message
+      tmp = data.frame('Table Status' = c('Select, upload, or create a model'))
+      
+    }
+    
+    DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE,
+                  autoHideNavigation = TRUE,
+                  options=list(pageLength = result_count,
+                               searching = FALSE,
+                               paging = FALSE,
+                               fixedHeader=list(footer=FALSE)
+                  ))
     
   })
   
