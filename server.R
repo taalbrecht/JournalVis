@@ -59,6 +59,7 @@ shinyServer(function(input, output, session) {
   #Reactive value to contain flag stating whether DT objects have been initialized
   tableinitialized <- reactiveValues()
   tableinitialized$DocumentDT = FALSE
+  tableinitialized$DocumentDTSetPage1 = FALSE
   tableinitialized$SentenceDT = FALSE
   
   #Reactive value to contain clicks from bar graphs of key terms to highlight on graph
@@ -2378,6 +2379,12 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   #Full text search to find documents that match document text provided in full text search
   SemanticSearch <- reactive({
     
+    isolate({
+      print('Firing semantic search')
+      # Set flag to reset results table page to page 1
+      tableinitialized$DocumentDTSetPage1 = TRUE
+    })
+    
     #Get topic model
     topicmodel <- CreateTopicModel()
     
@@ -3070,6 +3077,10 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     # Check to see if table has been initialized:
     if(tableinitialized$DocumentDT){
       
+      # Get raw data
+      details = FilterDetail()
+      topicmodel = CreateTopicModel()
+      
       #Get core static table
       tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
       
@@ -3077,6 +3088,9 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
       
       #Get semantic search topic match vector and document ranking
       semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
+      
+      #Get current displayed rows of table
+      displayed_rows = input$SemDocMatchTable_rows_current
       
       isolate({
         
@@ -3096,10 +3110,31 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
           tmp = tmp[as.character(closedocs),]
           tmp$Match = round(100*(1 - distperc), digits = 1)
           
+          # Get best matching segment of each displayed document using a binary tree search
+          if(!is.null(displayed_rows)){
+            print("Firing snippet finder")
+            table_docs_bin = c()
+            for(i in displayed_rows){
+              
+              snippet_results = binary_doc_snippet_search(document = details$abstract[[as.character(closedocs)[i]]],
+                                                          stm_model = topicmodel$TopicModel,
+                                                          target_vector = semsearch$SemanticTopics)
+              table_docs_bin = c(table_docs_bin, snippet_results$BestSnippet)
+            }
+            
+            #Clean invalid characters from abstract that can cause issues with table display and replace currently displayed rows
+            table_docs_bin = sapply(table_docs_bin, clean)
+            tmp$Document_Snippet[displayed_rows] = table_docs_bin
+            
+          }
+          
           #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
           rownames(tmp) = NULL
           
-          replaceData(proxSemTable, tmp, resetPaging = TRUE)
+          replaceData(proxSemTable, tmp, resetPaging = tableinitialized$DocumentDTSetPage1)
+          
+          # Set paging reset flag to false (only updated when a new search is performed)
+          tableinitialized$DocumentDTSetPage1 = FALSE
           
         }else{
           #If no search terms have been entered, return a blank table
@@ -3126,92 +3161,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     
   })
   
-  # Get best matching segment of each displayed document in the table using a binary tree search
-  observe({
-    
-    # Check to see if table has been initialized:
-    if(tableinitialized$DocumentDT){
-      
-      # Get raw data
-      details = FilterDetail()
-      topicmodel = CreateTopicModel()
-      
-      #Get core static table
-      tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
-      
-      if(!is.null(tmp)){
-        
-        #Get semantic search topic match vector and document ranking
-        semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
-        
-        #Get current displayed rows of table
-        displayed_rows = input$SemDocMatchTable_rows_current
-        
-        isolate({
-          
-          # If something was returned by the semantic search and if the table exists, update the table
-          if(!is.null(semsearch)){
-            
-            #Sort topic vector from largest to smallest
-            topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
-            
-            #Get ranked list of most likely matching documents
-            closedocs <- semsearch$DocumentMatchRank
-            
-            #Get document match percent
-            distperc <- semsearch$DocumentCosDistance
-            
-            #Rank items by matching result of distance calculations to document ID in row name
-            tmp = tmp[as.character(closedocs),]
-            tmp$Match = round(100*(1 - distperc), digits = 1)
-            
-            # Get best matching segment of each displayed document using a binary tree search
-            if(!is.null(displayed_rows)){
-              print("Firing snippet finder")
-              table_docs_bin = c()
-              for(i in displayed_rows){
-                
-                snippet_results = binary_doc_snippet_search(document = details$abstract[[as.character(closedocs)[i]]],
-                                                            stm_model = topicmodel$TopicModel,
-                                                            target_vector = semsearch$SemanticTopics)
-                table_docs_bin = c(table_docs_bin, snippet_results$BestSnippet)
-              }
-              
-              #Clean invalid characters from abstract that can cause issues with table display and replace currently displayed rows
-              table_docs_bin = sapply(table_docs_bin, clean)
-              tmp$Document_Snippet[displayed_rows] = table_docs_bin
-              
-            }
-            
-            #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
-            rownames(tmp) = NULL
-            
-            replaceData(proxSemTable, tmp, resetPaging = FALSE)
-            
-          }else{
-            #If no search terms have been entered, return a blank table
-            #Get core static table data
-            tmp = tmp[1,]
-            
-            #Return blank table for rendering
-            tmp[1,] = ""
-            tmp[,ncol(tmp)] = "Enter search terms to return results"
-            
-            #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
-            rownames(tmp) = NULL
-            
-            replaceData(proxSemTable, tmp)
-            
-          }
-          
-          
-        })
-        
-      }
-      
-    }
-    
-  })
   
   #Create plot of topic blend of document text provided in search
   output$SemanticSearchTimePlot <- renderPlot({
