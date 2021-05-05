@@ -58,8 +58,6 @@ shinyServer(function(input, output, session) {
   
   #Reactive value to contain flag stating whether DT objects have been initialized
   tableinitialized <- reactiveValues()
-  tableinitialized$DocumentDT = FALSE
-  tableinitialized$DocumentDTSetPage1 = FALSE
   tableinitialized$DocumentDTPage = 1
   tableinitialized$SentenceDT = FALSE
   
@@ -2383,7 +2381,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     isolate({
       print('Firing semantic search')
       # Set flag to reset results table page to page 1
-      tableinitialized$DocumentDTSetPage1 = TRUE
       tableinitialized$DocumentDTPage = 1
     })
     
@@ -3024,141 +3021,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     return(HTML(paste("<b>Most Probable Topic Matches: </b><br>",
                       paste0(names(topicvec[1:min(5, length(topicvec))]), ": " , 100*round(topicvec[1:min(5, length(topicvec))], 3), "%", collapse = "<br>"), "<br><br>")))
     #paste(names(topicvec[1:min(5, length(topicvec))]), topicvec[1:min(5, length(topicvec))], collapse = ", "))))
-    }
-    
-  })
-  
-  #Initialize semantic document matching table
-  output$SemDocMatchTable <- DT::renderDataTable({
-    
-    #Get core table data
-    tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
-    
-    if(!is.null(tmp)){
-      
-      #Set reactive flag to TRUE for document table generation
-      tableinitialized$DocumentDT = TRUE
-      
-      #Remove row names so they are not displayed
-      rownames(tmp) = NULL
-      
-      DT::datatable(tmp, filter='none', style='bootstrap', escape = FALSE,
-                    options=list(pageLength=5, columnDefs = list(list(
-                      targets = 3,
-                      render = JS(
-                        "function(data, type, row, meta) {",
-                        "return type === 'display' && data.length > 1000 ?",
-                        "'<span title=\"' + data + '\">' + data.substr(0, 1000) + '...</span>' : data;",
-                        "}")
-                    ))))
-      
-    }else if(is.null(input$preloadmodsel)){
-      
-      #Set reactive flag to FALSE for document table generation
-      tableinitialized$DocumentDT = FALSE
-      
-      # Return loading message
-      data.frame('Table Status' = c('Loading model...'))
-    }else {
-      
-      #Set reactive flag to FALSE for document table generation
-      tableinitialized$DocumentDT = FALSE
-      
-      # Return loading message
-      data.frame('Table Status' = c('Select, upload, or create a model'))
-      
-    }
-    
-  })
-  
-  #Update semantic document table with search results to find documents that match document text provided in semantic search
-  # NOTE: Updating this way is much faster than fully rebuilding the table every time the search changes.
-  proxSemTable = dataTableProxy('SemDocMatchTable')
-  observe({
-    
-    # Check to see if table has been initialized:
-    if(tableinitialized$DocumentDT){
-      
-      # Get raw data
-      details = FilterDetail()
-      topicmodel = CreateTopicModel()
-      
-      #Get core static table
-      tmp = tryCatch(DocTableCore()[['CoreTable']], error = function(e) NULL)
-      
-      if(!is.null(tmp)){
-      
-      #Get semantic search topic match vector and document ranking
-      semsearch = tryCatch(SemanticSearch(), error = function(e) NULL)
-      
-      #Get current displayed rows of table
-      displayed_rows = input$SemDocMatchTable_rows_current
-      
-      isolate({
-        
-        # If something was returned by the semantic search and if the table exists, update the table
-        if(!is.null(semsearch)){
-          
-          #Sort topic vector from largest to smallest
-          topicvec <- semsearch$SemanticTopics[order(semsearch$SemanticTopics, decreasing = TRUE)]
-          
-          #Get ranked list of most likely matching documents
-          closedocs <- semsearch$DocumentMatchRank
-          
-          #Get document match percent
-          distperc <- semsearch$DocumentCosDistance
-          
-          #Rank items by matching result of distance calculations to document ID in row name
-          tmp = tmp[as.character(closedocs),]
-          tmp$Match = round(100*(1 - distperc), digits = 1)
-          
-          # Get best matching segment of each displayed document using a binary tree search
-          if(!is.null(displayed_rows)){
-            print("Firing snippet finder")
-            table_docs_bin = c()
-            for(i in displayed_rows){
-              
-              snippet_results = binary_doc_snippet_search(document = details$abstract[[as.character(closedocs)[i]]],
-                                                          stm_model = topicmodel$TopicModel,
-                                                          target_vector = semsearch$SemanticTopics)
-              table_docs_bin = c(table_docs_bin, snippet_results$BestSnippet)
-            }
-            
-            #Clean invalid characters from abstract that can cause issues with table display and replace currently displayed rows
-            table_docs_bin = sapply(table_docs_bin, clean)
-            tmp$Document_Snippet[displayed_rows] = table_docs_bin
-            
-          }
-          
-          #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
-          rownames(tmp) = NULL
-          
-          replaceData(proxSemTable, tmp, resetPaging = tableinitialized$DocumentDTSetPage1)
-          
-          # Set paging reset flag to false (only updated when a new search is performed)
-          tableinitialized$DocumentDTSetPage1 = FALSE
-          
-        }else{
-          #If no search terms have been entered, return a blank table
-          #Get core static table data
-          tmp = tmp[1,]
-          
-          #Return blank table for rendering
-          tmp[1,] = ""
-          tmp[,ncol(tmp)] = "Enter search terms to return results"
-          
-          #Remove rownames to unclutter DT display as they are no longer needed after sorting above is finished
-          rownames(tmp) = NULL
-          
-          replaceData(proxSemTable, tmp)
-          
-        }
-        
-        
-      })
-      
-      }
-      
     }
     
   })
