@@ -1787,7 +1787,7 @@ score_documents <- function(target_texts, topic_model, remove_numbers=TRUE, stem
   phrases <- phrases[order(nchar(phrases), decreasing = TRUE)]
 
   #Create metadata for new article which should have unique document ID that is used in other charts as first column
-  meta <- data.frame(PMID = paste0("NEWDOC", 1:length(target_texts)), year = max(topic_model$settings$covariates$betaindex))
+  meta <- data.frame(PMID = paste0("NEWDOC", 1:length(target_texts)), year = max(topic_model$settings$covariates$X[,"year"]))
 
   #Create corpus from semantic search text field
   quanttok = corpus(target_texts, docvars = meta)
@@ -1828,18 +1828,29 @@ score_documents <- function(target_texts, topic_model, remove_numbers=TRUE, stem
 
   #Revert multiword underscore splits in vocab back to spaces
   temp$vocab = gsub(pattern = "_", replacement = " ", x = temp$vocab, fixed = TRUE)
-
-  #Align Corpus
-  temp <- alignCorpus(new = temp, old.vocab = topic_model$vocab, verbose = FALSE)
-
-  #Fit the new topic model - may need to update with metadata at some point
-  temp <- fitNewDocuments(model = topic_model, documents = temp$documents, verbose = FALSE)
-
-  #Extract topic probabilities and name them, and order from largest to smallest
-  topicvec <- c(temp$theta)
-  names(topicvec) <- paste("Topic", c(1:length(topicvec)))
   
-  topicmat = temp$theta
+  #Construct matrix to hold all topic scores for each document
+  topicmat = matrix(nrow = length(temp$documents), ncol = ncol(topic_model$theta))
+
+  #Align corpus vocabulary
+  temp <- alignCorpus(new = temp, old.vocab = topic_model$vocab, verbose = FALSE)
+  
+  #Fit the new topic model - may need to update with metadata at some point
+  if(length(temp$documents) > 0){
+    doc_scores <- fitNewDocuments(model = topic_model, documents = temp$documents, verbose = FALSE)
+  
+    # Insert document scores for documents that could be scored by the model (have some terms in common)
+    topicmat[setdiff(c(1:nrow(topicmat)),  temp$docs.removed),] = doc_scores$theta
+  }
+  
+  # Insert topic vector with equal probability across all topics for documents that had no words in the model corpus (thus assume the prior of even probability of belonging to any topic)
+  if(length(temp$docs.removed) > 0){
+    
+    topicmat[temp$docs.removed,] = 1/(ncol(topicmat))
+    
+  }
+  
+  # Assign topic names to each column
   colnames(topicmat) = paste("Topic", c(1:ncol(topicmat)))
   
   return(topicmat)
