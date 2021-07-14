@@ -876,7 +876,6 @@ shinyServer(function(input, output, session) {
         #Link by title:
         
         #If linking by title
-        browser()
         if(input$locallinkby == "Filename"){
           titlelinktab = documentnamelinkage(docids = PMID, doctext = as.character(abstract), searchids = title)
           CitationFrame = titlelinktab$CitationFrame
@@ -2317,9 +2316,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
   #Create core document skeleton for all document java table creation so it does not need to be recreated from scratch every time which can take a very long time.
   DocTableCore <- reactive({
     
-    print('DocTableCore start')
-    print(Sys.time())
-    
     #Get abstract list and order by closeness to new document based on topic proportions
     details <- FilterDetail()
     
@@ -2333,9 +2329,6 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     
     #Add document IDs as row names for identification and subsequent additional processing as needed
     rownames(tmp) = details$PMID
-    
-    print('DocTableCore end')
-    print(Sys.time())
     
     return(list('CoreTable' = tmp))
   })
