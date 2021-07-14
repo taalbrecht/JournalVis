@@ -11,7 +11,6 @@ library(qdapTools)
 library(quanteda)
 library(pdftools)
 library(readtext)
-library(msgxtractr)
 
 #Enable bookmarking via url
 #enableBookmarking(store = "server")
@@ -1662,10 +1661,12 @@ extracttext <- function(filepath, verbose = FALSE, pdfattachments = TRUE){
     }
   }
   
-  #Read characters from .msg files (requires msgxtractr package)
-  if(fileextension == "msg"){
-    msgcontents = msgxtractr::read_msg(filepath)
-    output <- paste(c(msgcontents$subject, msgcontents$body$text), collapse = " ")
+  #Read characters from .msg files (requires msgxtractr package which only works in windows)
+  if(Sys.info()['sysname'] == 'Windows'){
+    if(fileextension == "msg"){
+      msgcontents = msgxtractr::read_msg(filepath)
+      output <- paste(c(msgcontents$subject, msgcontents$body$text), collapse = " ")
+    }
   }
   
   return(output)
