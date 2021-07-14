@@ -1913,6 +1913,12 @@ shinyServer(function(input, output, session) {
     
       #Isolate internal code to prevent updates where the button has not been pressed
       isolate({
+        
+        #disable database polling search buttons using shinyjs before intense computation steps below
+        disable("summary_search")
+        disable("detailed_search")
+        disable("link_search")
+        disable("gentopicmodelbutton")
       
         #Get document details
         details <- FilterDetail()
@@ -1925,11 +1931,6 @@ shinyServer(function(input, output, session) {
     
     #Aggressively strip the article text, removing all non-letter items due to bugs in stm and tm (based on likely bug in removePunctuation function in tm package) not properly removing punctuation for trademark symbol anymore
     details$abstractonlyletters <- lapply(details$abstract, function(x) gsub("[^a-zA-Z ]"," ", x))
-    
-    #disable database polling search buttons using shinyjs before intense computation steps below
-    disable("summary_search")
-    disable("detailed_search")
-    disable("link_search")
     
     
     #####################################################
@@ -2264,6 +2265,7 @@ if((file.exists(paste0(getwd(),"/ToPMine/topicalPhrases/win_run.bat")) == TRUE) 
     enable("summary_search")
     enable("detailed_search")
     enable("link_search")
+    enable("gentopicmodelbutton")
     
     })
     
